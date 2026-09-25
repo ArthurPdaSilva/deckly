@@ -1,0 +1,168 @@
+# Deckly
+
+Aplicativo mobile de flashcards com repetição espaçada, inspirado na metodologia do Anki. O Deckly será construído inicialmente como um app **offline-first**, permitindo estudar sem conta, servidor ou conexão com a internet.
+
+## Deckly in English
+
+Deckly is a mobile flashcard application based on spaced repetition and inspired by Anki. The first version will be **offline-first**, so users can study without an account, a server connection, or an internet connection.
+
+## Objetivo
+
+O Deckly deve transformar revisões curtas e consistentes em um hábito de aprendizagem. A primeira versão prioriza uma experiência simples:
+
+- criar e organizar baralhos;
+- criar, editar e excluir flashcards;
+- revisar cartões em sessões diárias;
+- avaliar a dificuldade de cada resposta;
+- agendar a próxima revisão localmente;
+- acompanhar progresso e desempenho;
+- preservar os dados no dispositivo.
+
+O projeto não pretende reproduzir visualmente o Anki. A interface terá identidade própria, com foco em leitura, concentração e baixo atrito durante a revisão.
+
+## Princípios
+
+- **Offline por padrão:** os dados principais não dependem de rede, autenticação ou backend.
+- **Privacidade local:** cartões, revisões e progresso permanecem no dispositivo na primeira versão.
+- **Algoritmo substituível:** o domínio não ficará acoplado a um algoritmo específico de repetição espaçada.
+- **Interface acessível:** tipografia legível, estados claros, bom contraste e suporte a modo claro e escuro.
+- **Evolução incremental:** cada funcionalidade deve ser pequena, testada e compatível com futuras sincronização e internacionalização.
+
+## Repetição espaçada
+
+O agendador será definido por um contrato independente da interface e do armazenamento. A primeira implementação poderá usar uma versão baseada no SM-2, algoritmo clássico de repetição espaçada, mas o restante do sistema não deve depender dele.
+
+Uma futura implementação de FSRS ou outro algoritmo deverá poder substituir o agendador sem reescrever telas, banco de dados ou fluxo de revisão.
+
+O domínio deverá separar, no mínimo:
+
+- estado atual do cartão;
+- histórico de revisões;
+- avaliação dada pelo usuário;
+- cálculo do próximo intervalo;
+- persistência do agendamento.
+
+## Tecnologia e decisões iniciais
+
+- React Native com Expo.
+- TypeScript.
+- Persistência local para operação offline.
+- `StyleSheet` nativo do React Native.
+- Design system próprio baseado em tokens semânticos.
+- Testes automatizados desde a primeira funcionalidade.
+- Desenvolvimento orientado a testes (TDD): teste primeiro, implementação depois e refatoração por último.
+- GitHub Actions para CI/CD desde o início do desenvolvimento.
+
+Não será utilizado Material UI, pois ele é direcionado principalmente ao React para web. NativeWind/Tailwind também não será adotado inicialmente: o Deckly usará componentes próprios e tokens para preservar controle visual e reduzir dependências.
+
+## Tema visual
+
+O modo claro e o modo escuro existirão desde a primeira versão. Componentes não devem definir cores diretamente; devem consumir tokens do tema atual.
+
+Exemplos de tokens semânticos:
+
+- `background`;
+- `surface`;
+- `text`;
+- `textSecondary`;
+- `primary`;
+- `border`;
+- `danger`;
+- `success`.
+
+Uma futura preferência de tema deverá ser persistida localmente. A estrutura também deve permitir seguir a preferência do sistema sem alterar os componentes.
+
+## Internacionalização
+
+O idioma inicial da interface será português brasileiro. A arquitetura deve evitar textos espalhados em regras de negócio e componentes, deixando a internacionalização preparada para português brasileiro e inglês em uma etapa posterior.
+
+A troca de idioma pelo usuário não faz parte da primeira versão.
+
+## Estrutura planejada
+
+```text
+src/
+  components/       componentes reutilizáveis da interface
+  database/         persistência local e migrations
+  features/         módulos por domínio
+    decks/           baralhos
+    cards/           flashcards
+    review/          sessão de revisão e agendamento
+    statistics/      progresso e desempenho
+  routes/            navegação
+  services/          contratos e implementações externas
+  styles/            tokens, temas e estilos compartilhados
+  types/             tipos compartilhados
+  utils/             utilitários sem regra de domínio
+  __tests__/         testes espelhando a source
+```
+
+As telas não devem executar SQL diretamente. Repositories ou serviços de persistência serão responsáveis pelo acesso ao banco local. O algoritmo de revisão ficará em um módulo de domínio independente da camada de UI.
+
+## Roadmap inicial
+
+### Fundação
+
+- [ ] Criar o projeto React Native com Expo e TypeScript.
+- [ ] Configurar navegação, lint, formatação e testes.
+- [ ] Criar tokens de espaçamento, tipografia, cores e temas claro/escuro.
+- [ ] Configurar persistência local e migrations.
+- [ ] Configurar CI no GitHub Actions.
+
+### Primeiro fluxo funcional
+
+- [ ] Criar, editar e excluir baralhos.
+- [ ] Criar, editar e excluir flashcards.
+- [ ] Implementar sessão de revisão.
+- [ ] Implementar avaliação da resposta.
+- [ ] Implementar o primeiro agendador baseado em SM-2.
+- [ ] Salvar histórico e próxima revisão offline.
+
+### Evolução
+
+- [ ] Dashboard de progresso.
+- [ ] Importação e exportação de dados.
+- [ ] Backup local.
+- [ ] Internacionalização da interface.
+- [ ] Avaliação de FSRS como alternativa de agendamento.
+- [ ] Sincronização opcional, sem comprometer o núcleo offline.
+
+## Qualidade e CI/CD
+
+Toda nova funcionalidade deve ser desenvolvida usando TDD, seguindo este ciclo:
+
+1. Escrever um teste que descreva o comportamento esperado.
+2. Executar o teste e confirmar que ele falha pelo motivo correto.
+3. Implementar a menor mudança necessária para fazê-lo passar.
+4. Refatorar mantendo todos os testes passando.
+
+O teste deve ser criado antes do código de produção para cada item novo, incluindo regras de negócio, repositories, stores, componentes e fluxos de tela.
+
+O pipeline deve validar, no mínimo:
+
+```text
+npm ci
+npm run typecheck
+npm run lint
+npm test -- --runInBand --coverage
+```
+
+O GitHub Actions deverá executar essas verificações em pull requests e em pushes para `main`. Falhas de tipos, formatação, lint ou testes devem bloquear a integração.
+
+O workflow inicial está em `.github/workflows/ci.yml`. Enquanto a fundação Expo ainda não existir, ele valida a documentação e mantém as verificações do aplicativo condicionadas à presença de `package-lock.json`. A etapa de distribuição será adicionada quando houver uma plataforma de build definida, como EAS para Android e iOS.
+
+## Desenvolvimento
+
+Os comandos definitivos serão adicionados quando a fundação Expo for criada. O fluxo esperado será:
+
+```bash
+npm install
+npm start
+npm run typecheck
+npm run lint
+npm test -- --runInBand
+```
+
+## Licença
+
+A licença do projeto ainda será definida.
