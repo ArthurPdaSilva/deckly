@@ -130,7 +130,7 @@ Casos de uso e repositories não devem depender diretamente da classe do SQLite.
 ### Primeiro fluxo funcional
 
 - [x] Criar e listar baralhos.
-- [ ] Editar e excluir baralhos.
+- [x] Editar e excluir baralhos.
 - [ ] Reordenar baralhos por drag and drop, persistindo a ordem localmente.
 - [ ] Criar, editar e excluir flashcards.
 - [ ] Implementar sessão de revisão.

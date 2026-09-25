@@ -11,7 +11,7 @@ import {
 import { useTheme } from "../../styles/ThemeProvider";
 import type { Deck } from "./domain/deck";
 import { createDeckRepository } from "./repository";
-import { createDeck, listDecks } from "./useCases";
+import { createDeck, deleteDeck, listDecks, updateDeck } from "./useCases";
 
 export function DecksScreen() {
   const database = useSQLiteContext();
@@ -20,6 +20,8 @@ export function DecksScreen() {
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [editingDeck, setEditingDeck] = useState<Deck | null>(null);
+  const [deckPendingDelete, setDeckPendingDelete] = useState<Deck | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -37,28 +39,73 @@ export function DecksScreen() {
     };
   }, [database]);
 
-  async function handleCreateDeck() {
+  async function handleSubmitDeck() {
     try {
       const repository = createDeckRepository(database);
-      const deck = await createDeck(
-        repository,
-        { name },
-        {
-          now: new Date(),
-          createId: () => `deck-${Date.now()}`,
-        },
-      );
 
-      setDecks((currentDecks) => [deck, ...currentDecks]);
+      if (editingDeck) {
+        const deck = await updateDeck(
+          repository,
+          editingDeck,
+          { name },
+          new Date(),
+        );
+        setDecks((currentDecks) =>
+          currentDecks.map((currentDeck) =>
+            currentDeck.id === deck.id ? deck : currentDeck,
+          ),
+        );
+        setEditingDeck(null);
+      } else {
+        const deck = await createDeck(
+          repository,
+          { name },
+          {
+            now: new Date(),
+            createId: () => `deck-${Date.now()}`,
+          },
+        );
+        setDecks((currentDecks) => [deck, ...currentDecks]);
+      }
+
       setName("");
       setError(null);
     } catch (cause) {
       setError(
         cause instanceof Error
           ? cause.message
-          : "Não foi possível criar o baralho",
+          : "Não foi possível salvar o baralho",
       );
     }
+  }
+
+  function handleStartEdit(deck: Deck) {
+    setEditingDeck(deck);
+    setName(deck.name);
+    setError(null);
+  }
+
+  function handleCancelEdit() {
+    setEditingDeck(null);
+    setName("");
+    setError(null);
+  }
+
+  async function handleConfirmDelete() {
+    if (!deckPendingDelete) {
+      return;
+    }
+
+    const repository = createDeckRepository(database);
+    await deleteDeck(repository, deckPendingDelete.id);
+    setDecks((currentDecks) =>
+      currentDecks.filter((deck) => deck.id !== deckPendingDelete.id),
+    );
+
+    if (editingDeck?.id === deckPendingDelete.id) {
+      handleCancelEdit();
+    }
+    setDeckPendingDelete(null);
   }
 
   const styles = StyleSheet.create({
@@ -100,8 +147,8 @@ export function DecksScreen() {
     },
     input: {
       backgroundColor: theme.colors.surface,
-      borderRadius: 16,
       borderColor: theme.colors.border,
+      borderRadius: 16,
       borderWidth: 1,
       color: theme.colors.text,
       marginBottom: theme.spacing.sm,
@@ -123,6 +170,19 @@ export function DecksScreen() {
       color: theme.colors.onPrimary,
       fontSize: theme.typography.body,
       fontWeight: "700",
+    },
+    cancelButton: {
+      alignItems: "center",
+      borderColor: theme.colors.border,
+      borderRadius: 16,
+      borderWidth: 1,
+      justifyContent: "center",
+      marginTop: theme.spacing.sm,
+      minHeight: 48,
+    },
+    cancelButtonLabel: {
+      color: theme.colors.textSecondary,
+      fontWeight: "600",
     },
     error: {
       color: theme.colors.danger,
@@ -147,6 +207,41 @@ export function DecksScreen() {
       color: theme.colors.textSecondary,
       marginTop: theme.spacing.xs,
     },
+    actionRow: {
+      flexDirection: "row",
+      gap: theme.spacing.lg,
+      marginTop: theme.spacing.md,
+    },
+    editAction: {
+      color: theme.colors.primary,
+      fontWeight: "700",
+    },
+    deleteAction: {
+      color: theme.colors.danger,
+      fontWeight: "700",
+    },
+    confirmation: {
+      backgroundColor: theme.colors.surfaceElevated,
+      borderColor: theme.colors.accent,
+      borderRadius: 18,
+      borderWidth: 1,
+      marginTop: theme.spacing.lg,
+      padding: theme.spacing.md,
+    },
+    confirmationTitle: {
+      color: theme.colors.text,
+      fontSize: theme.typography.body,
+      fontWeight: "700",
+    },
+    confirmationText: {
+      color: theme.colors.textSecondary,
+      marginTop: theme.spacing.xs,
+    },
+    confirmationActions: {
+      flexDirection: "row",
+      gap: theme.spacing.lg,
+      marginTop: theme.spacing.md,
+    },
   });
 
   return (
@@ -168,16 +263,23 @@ export function DecksScreen() {
         value={name}
       />
       <Pressable
+        accessibilityLabel={editingDeck ? "Salvar alterações" : "Criar baralho"}
         accessibilityRole="button"
-        accessibilityLabel="Criar baralho"
-        onPress={() => void handleCreateDeck()}
+        onPress={() => void handleSubmitDeck()}
         style={({ pressed }) => [
           styles.createButton,
           pressed && styles.createButtonPressed,
         ]}
       >
-        <Text style={styles.createButtonLabel}>Criar baralho</Text>
+        <Text style={styles.createButtonLabel}>
+          {editingDeck ? "Salvar alterações" : "Criar baralho"}
+        </Text>
       </Pressable>
+      {editingDeck ? (
+        <Pressable onPress={handleCancelEdit} style={styles.cancelButton}>
+          <Text style={styles.cancelButtonLabel}>Cancelar edição</Text>
+        </Pressable>
+      ) : null}
       {error ? <Text style={styles.error}>{error}</Text> : null}
       {isLoading ? (
         <Text style={styles.empty}>Carregando baralhos...</Text>
@@ -194,10 +296,34 @@ export function DecksScreen() {
               {item.description ? (
                 <Text style={styles.deckDescription}>{item.description}</Text>
               ) : null}
+              <View style={styles.actionRow}>
+                <Pressable onPress={() => handleStartEdit(item)}>
+                  <Text style={styles.editAction}>Editar</Text>
+                </Pressable>
+                <Pressable onPress={() => setDeckPendingDelete(item)}>
+                  <Text style={styles.deleteAction}>Excluir</Text>
+                </Pressable>
+              </View>
             </View>
           )}
         />
       )}
+      {deckPendingDelete ? (
+        <View style={styles.confirmation}>
+          <Text style={styles.confirmationTitle}>Excluir este baralho?</Text>
+          <Text style={styles.confirmationText}>
+            Os cartões desse baralho também serão removidos.
+          </Text>
+          <View style={styles.confirmationActions}>
+            <Pressable onPress={() => setDeckPendingDelete(null)}>
+              <Text style={styles.editAction}>Cancelar</Text>
+            </Pressable>
+            <Pressable onPress={() => void handleConfirmDelete()}>
+              <Text style={styles.deleteAction}>Confirmar exclusão</Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : null}
     </View>
   );
 }

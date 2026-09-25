@@ -44,5 +44,21 @@ export function createDeckRepository(database: DeckDatabase): DeckRepository {
         updatedAt: row.updated_at,
       }));
     },
+
+    async update(deck) {
+      await database.runAsync(
+        `UPDATE decks
+         SET name = ?, description = ?, updated_at = ?
+         WHERE id = ?`,
+        deck.name,
+        deck.description,
+        deck.updatedAt,
+        deck.id,
+      );
+    },
+
+    async remove(id) {
+      await database.runAsync("DELETE FROM decks WHERE id = ?", id);
+    },
   };
 }

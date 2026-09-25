@@ -3,10 +3,17 @@ import type {
   Deck,
   DeckRepository,
 } from "../../../features/decks/domain/deck";
-import { createDeck, listDecks } from "../../../features/decks/useCases";
+import {
+  createDeck,
+  deleteDeck,
+  listDecks,
+  updateDeck,
+} from "../../../features/decks/useCases";
 
 function createRepository(initialDecks: Deck[] = []) {
   const savedDecks = [...initialDecks];
+  const updatedDecks: Deck[] = [];
+  const removedDeckIds: string[] = [];
   const repository: DeckRepository = {
     async save(deck) {
       savedDecks.push(deck);
@@ -14,9 +21,15 @@ function createRepository(initialDecks: Deck[] = []) {
     async findAll() {
       return savedDecks;
     },
+    async update(deck) {
+      updatedDecks.push(deck);
+    },
+    async remove(id) {
+      removedDeckIds.push(id);
+    },
   };
 
-  return { repository, savedDecks };
+  return { repository, savedDecks, updatedDecks, removedDeckIds };
 }
 
 describe("deck use cases", () => {
@@ -72,5 +85,40 @@ describe("deck use cases", () => {
     const { repository } = createRepository(decks);
 
     await expect(listDecks(repository)).resolves.toEqual(decks);
+  });
+
+  it("updates a deck while preserving its creation date", async () => {
+    const originalDeck: Deck = {
+      id: "deck-1",
+      name: "Inglês",
+      description: "",
+      createdAt: "2026-01-01T10:00:00.000Z",
+      updatedAt: "2026-01-01T10:00:00.000Z",
+    };
+    const { repository, updatedDecks } = createRepository([originalDeck]);
+    const updatedAt = new Date("2026-01-02T10:00:00.000Z");
+
+    const deck = await updateDeck(
+      repository,
+      originalDeck,
+      { name: "  Espanhol  ", description: "  Verbos  " },
+      updatedAt,
+    );
+
+    expect(deck).toEqual({
+      ...originalDeck,
+      name: "Espanhol",
+      description: "Verbos",
+      updatedAt: updatedAt.toISOString(),
+    });
+    expect(updatedDecks).toEqual([deck]);
+  });
+
+  it("deletes a deck through the repository contract", async () => {
+    const { repository, removedDeckIds } = createRepository();
+
+    await deleteDeck(repository, "deck-1");
+
+    expect(removedDeckIds).toEqual(["deck-1"]);
   });
 });

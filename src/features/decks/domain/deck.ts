@@ -14,4 +14,6 @@ export interface CreateDeckInput {
 export interface DeckRepository {
   save(deck: Deck): Promise<void>;
   findAll(): Promise<Deck[]>;
+  update(deck: Deck): Promise<void>;
+  remove(id: string): Promise<void>;
 }

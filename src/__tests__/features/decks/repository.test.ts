@@ -57,4 +57,36 @@ describe("SQLite deck repository", () => {
       expect.stringContaining("ORDER BY updated_at DESC"),
     );
   });
+
+  it("updates a deck and removes it by id", async () => {
+    const database = {
+      runAsync: jest.fn().mockResolvedValue(undefined),
+      getAllAsync: jest.fn(),
+    };
+    const repository = createDeckRepository(database);
+    const deck: Deck = {
+      id: "deck-1",
+      name: "Espanhol",
+      description: "Verbos",
+      createdAt: "2026-01-01T10:00:00.000Z",
+      updatedAt: "2026-01-02T10:00:00.000Z",
+    };
+
+    await repository.update(deck);
+    await repository.remove(deck.id);
+
+    expect(database.runAsync).toHaveBeenNthCalledWith(
+      1,
+      expect.stringContaining("UPDATE decks"),
+      deck.name,
+      deck.description,
+      deck.updatedAt,
+      deck.id,
+    );
+    expect(database.runAsync).toHaveBeenNthCalledWith(
+      2,
+      "DELETE FROM decks WHERE id = ?",
+      deck.id,
+    );
+  });
 });

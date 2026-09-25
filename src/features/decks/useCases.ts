@@ -32,3 +32,33 @@ export async function createDeck(
 export function listDecks(repository: DeckRepository): Promise<Deck[]> {
   return repository.findAll();
 }
+
+export async function updateDeck(
+  repository: DeckRepository,
+  currentDeck: Deck,
+  input: CreateDeckInput,
+  updatedAt: Date,
+): Promise<Deck> {
+  const name = input.name.trim();
+
+  if (!name) {
+    throw new Error("Deck name cannot be empty");
+  }
+
+  const deck: Deck = {
+    ...currentDeck,
+    name,
+    description: input.description?.trim() ?? currentDeck.description,
+    updatedAt: updatedAt.toISOString(),
+  };
+
+  await repository.update(deck);
+  return deck;
+}
+
+export function deleteDeck(
+  repository: DeckRepository,
+  id: string,
+): Promise<void> {
+  return repository.remove(id);
+}
