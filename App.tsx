@@ -1,9 +1,9 @@
 import { SQLiteProvider } from "expo-sqlite";
-import { Text, View } from "react-native";
 import {
   DATABASE_NAME,
   initializeDatabase,
 } from "./src/database/client";
+import { DecksScreen } from "./src/features/decks/DecksScreen";
 import { ThemeProvider } from "./src/styles/ThemeProvider";
 
 export function App() {
@@ -13,9 +13,7 @@ export function App() {
         databaseName={DATABASE_NAME}
         onInit={initializeDatabase}
       >
-        <View>
-          <Text>Deckly</Text>
-        </View>
+        <DecksScreen />
       </SQLiteProvider>
     </ThemeProvider>
   );

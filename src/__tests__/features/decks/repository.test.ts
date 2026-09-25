@@ -1,0 +1,60 @@
+import type { Deck } from "../../../features/decks/domain/deck";
+import { createDeckRepository } from "../../../features/decks/repository";
+
+describe("SQLite deck repository", () => {
+  it("persists a deck with the local database schema", async () => {
+    const database = {
+      runAsync: jest.fn().mockResolvedValue(undefined),
+      getAllAsync: jest.fn(),
+    };
+    const repository = createDeckRepository(database);
+    const deck: Deck = {
+      id: "deck-1",
+      name: "Inglês",
+      description: "Verbos",
+      createdAt: "2026-01-01T10:00:00.000Z",
+      updatedAt: "2026-01-01T10:00:00.000Z",
+    };
+
+    await repository.save(deck);
+
+    expect(database.runAsync).toHaveBeenCalledWith(
+      expect.stringContaining("INSERT INTO decks"),
+      deck.id,
+      deck.name,
+      deck.description,
+      deck.createdAt,
+      deck.updatedAt,
+    );
+  });
+
+  it("maps persisted rows to domain decks ordered by the database", async () => {
+    const rows = [
+      {
+        id: "deck-2",
+        name: "Matemática",
+        description: "",
+        created_at: "2026-01-02T10:00:00.000Z",
+        updated_at: "2026-01-02T10:00:00.000Z",
+      },
+    ];
+    const database = {
+      runAsync: jest.fn(),
+      getAllAsync: jest.fn().mockResolvedValue(rows),
+    };
+    const repository = createDeckRepository(database);
+
+    await expect(repository.findAll()).resolves.toEqual([
+      {
+        id: "deck-2",
+        name: "Matemática",
+        description: "",
+        createdAt: "2026-01-02T10:00:00.000Z",
+        updatedAt: "2026-01-02T10:00:00.000Z",
+      },
+    ]);
+    expect(database.getAllAsync).toHaveBeenCalledWith(
+      expect.stringContaining("ORDER BY updated_at DESC"),
+    );
+  });
+});

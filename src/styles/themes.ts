@@ -3,12 +3,18 @@ export type ThemeMode = "light" | "dark";
 export interface ThemeColors {
   background: string;
   surface: string;
+  surfaceElevated: string;
   text: string;
   textSecondary: string;
+  textMuted: string;
   primary: string;
+  primaryMuted: string;
+  accent: string;
+  onPrimary: string;
   border: string;
   danger: string;
   success: string;
+  warning: string;
 }
 
 export interface ThemeSpacing {
@@ -51,14 +57,20 @@ const typography: ThemeTypography = {
 const lightTheme: Theme = {
   mode: "light",
   colors: {
-    background: "#F7F8FA",
-    surface: "#FFFFFF",
-    text: "#17202A",
-    textSecondary: "#5B6573",
-    primary: "#315CFF",
-    border: "#D9DEE7",
-    danger: "#C93636",
-    success: "#16845B",
+    background: "#FBF7F2",
+    surface: "#FFF9F2",
+    surfaceElevated: "#FFFFFF",
+    text: "#211A2B",
+    textSecondary: "#6F6578",
+    textMuted: "#A79CAB",
+    primary: "#6D4AFF",
+    primaryMuted: "#EEE9FF",
+    accent: "#F3B562",
+    onPrimary: "#FFFDF9",
+    border: "#E9DFD4",
+    danger: "#C94C5B",
+    success: "#3B9B7A",
+    warning: "#C88632",
   },
   spacing,
   typography,
@@ -67,14 +79,20 @@ const lightTheme: Theme = {
 const darkTheme: Theme = {
   mode: "dark",
   colors: {
-    background: "#11151C",
-    surface: "#1B222C",
-    text: "#F3F5F7",
-    textSecondary: "#AAB4C2",
-    primary: "#8EA6FF",
-    border: "#35404E",
-    danger: "#FF8A8A",
-    success: "#65D7A8",
+    background: "#17131F",
+    surface: "#241D31",
+    surfaceElevated: "#302641",
+    text: "#FFF8F1",
+    textSecondary: "#C9BFD1",
+    textMuted: "#95889E",
+    primary: "#B7A5FF",
+    primaryMuted: "#3A2E5A",
+    accent: "#F6C777",
+    onPrimary: "#241D31",
+    border: "#463A52",
+    danger: "#FF8E9A",
+    success: "#6BD1A8",
+    warning: "#F4C86A",
   },
   spacing,
   typography,

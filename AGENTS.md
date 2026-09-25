@@ -14,6 +14,7 @@ Deckly é um aplicativo React Native para flashcards e repetição espaçada. A 
 - Usar TDD: escrever e executar o teste antes da implementação de cada item novo.
 - Não adicionar dependência remota para o fluxo principal de estudo.
 - Não apagar ou substituir dados locais sem migration explícita e testes de compatibilidade.
+- A ordem manual dos baralhos deve ser persistida; drag and drop exige migration e testes antes de ser disponibilizado.
 
 ## Arquitetura
 

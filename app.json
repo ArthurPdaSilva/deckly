@@ -4,7 +4,17 @@
     "slug": "deckly",
     "version": "0.1.0",
     "orientation": "portrait",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
-    "assetBundlePatterns": ["**/*"]
+    "assetBundlePatterns": ["**/*"],
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#17131F"
+      }
+    },
+    "web": {
+      "favicon": "./assets/icon.png"
+    }
   }
 }

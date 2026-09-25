@@ -16,6 +16,6 @@ describe("ThemeProvider", () => {
       </ThemeProvider>,
     );
 
-    expect(screen.getByText("dark:#11151C")).toBeTruthy();
+    expect(screen.getByText("dark:#17131F")).toBeTruthy();
   });
 });

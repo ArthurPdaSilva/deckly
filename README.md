@@ -61,13 +61,20 @@ Não será utilizado Material UI, pois ele é direcionado principalmente ao Reac
 
 O modo claro e o modo escuro existirão desde a primeira versão. Componentes não devem definir cores diretamente; devem consumir tokens do tema atual.
 
+A identidade visual evita o padrão azul e branco de aplicativos utilitários. O claro usa papel quente, ameixa e violeta elétrico com acentos de damasco; o escuro usa uma base noturna de ameixa, superfícies elevadas e os mesmos acentos com maior luminosidade. O ícone do app representa cartas sobrepostas e um marcador de memória.
+
 Exemplos de tokens semânticos:
 
 - `background`;
 - `surface`;
+- `surfaceElevated`;
 - `text`;
 - `textSecondary`;
+- `textMuted`;
 - `primary`;
+- `primaryMuted`;
+- `accent`;
+- `onPrimary`;
 - `border`;
 - `danger`;
 - `success`.
@@ -122,7 +129,9 @@ Casos de uso e repositories não devem depender diretamente da classe do SQLite.
 
 ### Primeiro fluxo funcional
 
-- [ ] Criar, editar e excluir baralhos.
+- [x] Criar e listar baralhos.
+- [ ] Editar e excluir baralhos.
+- [ ] Reordenar baralhos por drag and drop, persistindo a ordem localmente.
 - [ ] Criar, editar e excluir flashcards.
 - [ ] Implementar sessão de revisão.
 - [ ] Implementar avaliação da resposta.
