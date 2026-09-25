@@ -1,4 +1,5 @@
 import { SQLiteProvider } from "expo-sqlite";
+import { ToastHost } from "./src/components/notifications";
 import {
   DATABASE_NAME,
   initializeDatabase,
@@ -15,6 +16,7 @@ export function App() {
       >
         <DecksScreen />
       </SQLiteProvider>
+      <ToastHost />
     </ThemeProvider>
   );
 }

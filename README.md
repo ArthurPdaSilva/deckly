@@ -51,6 +51,8 @@ O domínio deverá separar, no mínimo:
 - `expo-sqlite` para persistência local e migrations versionadas.
 - `StyleSheet` nativo do React Native.
 - Design system próprio baseado em tokens semânticos.
+- Toasts globais com configuração visual própria para feedback de ações.
+- Movimento funcional com entradas suaves de tela e feedback de pressão nos controles.
 - Testes automatizados desde a primeira funcionalidade.
 - Desenvolvimento orientado a testes (TDD): teste primeiro, implementação depois e refatoração por último.
 - GitHub Actions para CI/CD desde o início do desenvolvimento.
@@ -115,6 +117,10 @@ O banco local inicial é o `deckly.db`, aberto pelo `expo-sqlite`. O acesso pass
 
 O schema inicial contém baralhos, cartões, histórico de revisões e estado do aplicativo. O histórico é mantido separado do estado atual dos cartões para permitir a evolução do agendador sem perder dados anteriores.
 
+### Dados de teste
+
+Em desenvolvimento, a tela de baralhos exibe **Carregar dados de teste**. Após a confirmação, o Deckly apaga decks, cartões e histórico em uma transação e insere 6 decks temáticos com 24 cartões, incluindo cartões novos, vencidos e com diferentes estados de repetição. Essa ação não é exibida em builds de produção e não é executada automaticamente na abertura do app.
+
 Casos de uso e repositories não devem depender diretamente da classe do SQLite. Essa fronteira permite criar posteriormente outro adaptador de persistência, inclusive para um banco relacional remoto ou MongoDB, sem alterar a interface da sessão de estudo.
 
 ## Roadmap inicial
@@ -131,13 +137,15 @@ Casos de uso e repositories não devem depender diretamente da classe do SQLite.
 
 - [x] Criar e listar baralhos.
 - [x] Editar e excluir baralhos.
+- [x] Feedback visual por toast em ações de sucesso e erro.
+- [x] Seed manual de desenvolvimento para decks e cartões.
 - [ ] Reordenar baralhos por drag and drop, persistindo a ordem localmente.
 - [x] Criar e listar flashcards dentro de um baralho.
 - [x] Editar e excluir flashcards.
-- [ ] Implementar sessão de revisão.
-- [ ] Implementar avaliação da resposta.
-- [ ] Implementar o primeiro agendador baseado em SM-2.
-- [ ] Salvar histórico e próxima revisão offline.
+- [x] Implementar sessão de revisão.
+- [x] Implementar avaliação da resposta.
+- [x] Implementar o primeiro agendador baseado em SM-2.
+- [x] Salvar histórico e próxima revisão offline.
 
 ### Evolução
 

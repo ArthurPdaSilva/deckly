@@ -82,9 +82,19 @@ describe("CardsScreen", () => {
 
     await waitFor(() => expect(screen.getByText("Hello")).toBeTruthy());
     fireEvent.press(screen.getByText("Editar"));
-    fireEvent.changeText(screen.getByPlaceholderText("Frente do cartão"), "Hi");
-    fireEvent.changeText(screen.getByPlaceholderText("Verso do cartão"), "Oi");
-    fireEvent.press(screen.getByText("Salvar alterações"));
+    expect(screen.getByText("Editar cartão")).toBeTruthy();
+    expect(screen.getByTestId("card-editor").props.style).toEqual(
+      expect.objectContaining({ backgroundColor: "#FFFFFF" }),
+    );
+    fireEvent.changeText(
+      screen.getByPlaceholderText("Frente para edição"),
+      "Hi",
+    );
+    fireEvent.changeText(
+      screen.getByPlaceholderText("Verso para edição"),
+      "Oi",
+    );
+    fireEvent.press(screen.getByText("Salvar edição"));
 
     await waitFor(() => {
       expect(database.runAsync).toHaveBeenCalledWith(

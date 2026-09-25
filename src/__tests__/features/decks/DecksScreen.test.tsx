@@ -39,6 +39,30 @@ describe("DecksScreen", () => {
     });
   });
 
+  it("loads the development seed after confirmation", async () => {
+    const database = {
+      execAsync: jest.fn().mockResolvedValue(undefined),
+      runAsync: jest.fn().mockResolvedValue(undefined),
+      getAllAsync: jest.fn().mockResolvedValue([]),
+    };
+    jest.mocked(useSQLiteContext).mockReturnValue(database as never);
+
+    const screen = render(
+      <ThemeProvider mode="light">
+        <DecksScreen />
+      </ThemeProvider>,
+    );
+
+    expect(screen.getByText("Carregar dados de teste")).toBeTruthy();
+    fireEvent.press(screen.getByText("Carregar dados de teste"));
+    expect(screen.getByText("Substituir dados locais?")).toBeTruthy();
+    fireEvent.press(screen.getByText("Confirmar reset"));
+
+    await waitFor(() => {
+      expect(database.execAsync).toHaveBeenCalledWith("BEGIN");
+    });
+  });
+
   it("edits a deck from the list", async () => {
     const database = {
       runAsync: jest.fn().mockResolvedValue(undefined),
@@ -62,8 +86,12 @@ describe("DecksScreen", () => {
 
     await waitFor(() => expect(screen.getByText("Inglês")).toBeTruthy());
     fireEvent.press(screen.getByText("Editar"));
+    expect(screen.getByText("Editar baralho")).toBeTruthy();
+    expect(screen.getByTestId("deck-editor").props.style).toEqual(
+      expect.objectContaining({ backgroundColor: "#FFFFFF" }),
+    );
     fireEvent.changeText(
-      screen.getByPlaceholderText("Nome do baralho"),
+      screen.getByPlaceholderText("Nome para edição"),
       "Espanhol",
     );
     fireEvent.press(screen.getByText("Salvar alterações"));
@@ -77,6 +105,35 @@ describe("DecksScreen", () => {
         "deck-1",
       );
     });
+  });
+
+  it("opens the cards when any part of the deck is pressed", async () => {
+    const database = {
+      runAsync: jest.fn().mockResolvedValue(undefined),
+      getAllAsync: jest.fn().mockResolvedValue([
+        {
+          id: "deck-1",
+          name: "Inglês",
+          description: "Vocabulário",
+          created_at: "2026-01-01T10:00:00.000Z",
+          updated_at: "2026-01-01T10:00:00.000Z",
+        },
+      ]),
+    };
+    jest.mocked(useSQLiteContext).mockReturnValue(database as never);
+
+    const screen = render(
+      <ThemeProvider mode="light">
+        <DecksScreen />
+      </ThemeProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByText("Vocabulário")).toBeTruthy());
+    fireEvent.press(screen.getByTestId("deck-deck-1"));
+
+    await waitFor(() =>
+      expect(screen.getByText("Adicionar cartão")).toBeTruthy(),
+    );
   });
 
   it("asks for confirmation before deleting a deck", async () => {
