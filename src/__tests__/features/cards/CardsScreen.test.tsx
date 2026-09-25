@@ -53,4 +53,87 @@ describe("CardsScreen", () => {
       );
     });
   });
+
+  it("edits a flashcard", async () => {
+    const database = {
+      runAsync: jest.fn().mockResolvedValue(undefined),
+      getAllAsync: jest.fn().mockResolvedValue([
+        {
+          id: "card-1",
+          deck_id: "deck-1",
+          front: "Hello",
+          back: "Olá",
+          due_at: "2026-02-01T10:00:00.000Z",
+          interval_days: 0,
+          ease_factor: 2.5,
+          repetitions: 0,
+          created_at: "2026-02-01T10:00:00.000Z",
+          updated_at: "2026-02-01T10:00:00.000Z",
+        },
+      ]),
+    };
+    jest.mocked(useSQLiteContext).mockReturnValue(database as never);
+
+    const screen = render(
+      <ThemeProvider mode="light">
+        <CardsScreen deck={deck} onBack={jest.fn()} />
+      </ThemeProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByText("Hello")).toBeTruthy());
+    fireEvent.press(screen.getByText("Editar"));
+    fireEvent.changeText(screen.getByPlaceholderText("Frente do cartão"), "Hi");
+    fireEvent.changeText(screen.getByPlaceholderText("Verso do cartão"), "Oi");
+    fireEvent.press(screen.getByText("Salvar alterações"));
+
+    await waitFor(() => {
+      expect(database.runAsync).toHaveBeenCalledWith(
+        expect.stringContaining("UPDATE cards"),
+        "Hi",
+        "Oi",
+        expect.any(String),
+        "card-1",
+      );
+    });
+  });
+
+  it("asks for confirmation before deleting a flashcard", async () => {
+    const database = {
+      runAsync: jest.fn().mockResolvedValue(undefined),
+      getAllAsync: jest.fn().mockResolvedValue([
+        {
+          id: "card-1",
+          deck_id: "deck-1",
+          front: "Hello",
+          back: "Olá",
+          due_at: "2026-02-01T10:00:00.000Z",
+          interval_days: 0,
+          ease_factor: 2.5,
+          repetitions: 0,
+          created_at: "2026-02-01T10:00:00.000Z",
+          updated_at: "2026-02-01T10:00:00.000Z",
+        },
+      ]),
+    };
+    jest.mocked(useSQLiteContext).mockReturnValue(database as never);
+
+    const screen = render(
+      <ThemeProvider mode="light">
+        <CardsScreen deck={deck} onBack={jest.fn()} />
+      </ThemeProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByText("Hello")).toBeTruthy());
+    fireEvent.press(screen.getByText("Excluir"));
+
+    expect(screen.getByText("Excluir este cartão?")).toBeTruthy();
+    fireEvent.press(screen.getByText("Confirmar exclusão"));
+
+    await waitFor(() => {
+      expect(database.runAsync).toHaveBeenCalledWith(
+        "DELETE FROM cards WHERE id = ?",
+        "card-1",
+      );
+    });
+  });
 });

@@ -19,4 +19,6 @@ export interface CreateFlashcardInput {
 export interface FlashcardRepository {
   save(card: Flashcard): Promise<void>;
   findByDeckId(deckId: string): Promise<Flashcard[]>;
+  update(card: Flashcard): Promise<void>;
+  remove(id: string): Promise<void>;
 }

@@ -5,11 +5,15 @@ import type {
 } from "../../../features/cards/domain/flashcard";
 import {
   createFlashcard,
+  deleteFlashcard,
   listFlashcards,
+  updateFlashcard,
 } from "../../../features/cards/useCases";
 
 function createRepository() {
   const savedCards: Flashcard[] = [];
+  const updatedCards: Flashcard[] = [];
+  const removedCardIds: string[] = [];
   const repository: FlashcardRepository = {
     async save(card) {
       savedCards.push(card);
@@ -17,9 +21,15 @@ function createRepository() {
     async findByDeckId() {
       return savedCards;
     },
+    async update(card) {
+      updatedCards.push(card);
+    },
+    async remove(id) {
+      removedCardIds.push(id);
+    },
   };
 
-  return { repository, savedCards };
+  return { repository, savedCards, updatedCards, removedCardIds };
 }
 
 describe("flashcard use cases", () => {
@@ -81,5 +91,45 @@ describe("flashcard use cases", () => {
     const { repository } = createRepository();
 
     await expect(listFlashcards(repository, "deck-1")).resolves.toEqual([]);
+  });
+
+  it("updates a flashcard while preserving its scheduling state", async () => {
+    const originalCard: Flashcard = {
+      id: "card-1",
+      deckId: "deck-1",
+      front: "Question",
+      back: "Answer",
+      dueAt: "2026-02-01T10:00:00.000Z",
+      intervalDays: 4,
+      easeFactor: 2.7,
+      repetitions: 3,
+      createdAt: "2026-02-01T10:00:00.000Z",
+      updatedAt: "2026-02-01T10:00:00.000Z",
+    };
+    const { repository, updatedCards } = createRepository();
+    const updatedAt = new Date("2026-02-02T10:00:00.000Z");
+
+    const card = await updateFlashcard(
+      repository,
+      originalCard,
+      { front: " Updated question ", back: " Updated answer " },
+      updatedAt,
+    );
+
+    expect(card).toEqual({
+      ...originalCard,
+      front: "Updated question",
+      back: "Updated answer",
+      updatedAt: updatedAt.toISOString(),
+    });
+    expect(updatedCards).toEqual([card]);
+  });
+
+  it("deletes a flashcard through the repository contract", async () => {
+    const { repository, removedCardIds } = createRepository();
+
+    await deleteFlashcard(repository, "card-1");
+
+    expect(removedCardIds).toEqual(["card-1"]);
   });
 });

@@ -65,5 +65,21 @@ export function createFlashcardRepository(
         updatedAt: row.updated_at,
       }));
     },
+
+    async update(card) {
+      await database.runAsync(
+        `UPDATE cards
+         SET front = ?, back = ?, updated_at = ?
+         WHERE id = ?`,
+        card.front,
+        card.back,
+        card.updatedAt,
+        card.id,
+      );
+    },
+
+    async remove(id) {
+      await database.runAsync("DELETE FROM cards WHERE id = ?", id);
+    },
   };
 }

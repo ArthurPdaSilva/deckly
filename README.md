@@ -133,7 +133,7 @@ Casos de uso e repositories não devem depender diretamente da classe do SQLite.
 - [x] Editar e excluir baralhos.
 - [ ] Reordenar baralhos por drag and drop, persistindo a ordem localmente.
 - [x] Criar e listar flashcards dentro de um baralho.
-- [ ] Editar e excluir flashcards.
+- [x] Editar e excluir flashcards.
 - [ ] Implementar sessão de revisão.
 - [ ] Implementar avaliação da resposta.
 - [ ] Implementar o primeiro agendador baseado em SM-2.

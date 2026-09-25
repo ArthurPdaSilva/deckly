@@ -66,4 +66,41 @@ describe("SQLite flashcard repository", () => {
       "deck-1",
     );
   });
+
+  it("updates and removes a flashcard by id", async () => {
+    const database = {
+      runAsync: jest.fn().mockResolvedValue(undefined),
+      getAllAsync: jest.fn(),
+    };
+    const repository = createFlashcardRepository(database);
+    const card: Flashcard = {
+      id: "card-1",
+      deckId: "deck-1",
+      front: "Updated question",
+      back: "Updated answer",
+      dueAt: "2026-02-01T10:00:00.000Z",
+      intervalDays: 2,
+      easeFactor: 2.5,
+      repetitions: 1,
+      createdAt: "2026-02-01T10:00:00.000Z",
+      updatedAt: "2026-02-02T10:00:00.000Z",
+    };
+
+    await repository.update(card);
+    await repository.remove(card.id);
+
+    expect(database.runAsync).toHaveBeenNthCalledWith(
+      1,
+      expect.stringContaining("UPDATE cards"),
+      card.front,
+      card.back,
+      card.updatedAt,
+      card.id,
+    );
+    expect(database.runAsync).toHaveBeenNthCalledWith(
+      2,
+      "DELETE FROM cards WHERE id = ?",
+      card.id,
+    );
+  });
 });

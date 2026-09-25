@@ -50,3 +50,38 @@ export function listFlashcards(
 ): Promise<Flashcard[]> {
   return repository.findByDeckId(deckId);
 }
+
+export async function updateFlashcard(
+  repository: FlashcardRepository,
+  currentCard: Flashcard,
+  input: CreateFlashcardInput,
+  updatedAt: Date,
+): Promise<Flashcard> {
+  const front = input.front.trim();
+  const back = input.back.trim();
+
+  if (!front) {
+    throw new Error("Flashcard front cannot be empty");
+  }
+
+  if (!back) {
+    throw new Error("Flashcard back cannot be empty");
+  }
+
+  const card: Flashcard = {
+    ...currentCard,
+    front,
+    back,
+    updatedAt: updatedAt.toISOString(),
+  };
+
+  await repository.update(card);
+  return card;
+}
+
+export function deleteFlashcard(
+  repository: FlashcardRepository,
+  id: string,
+): Promise<void> {
+  return repository.remove(id);
+}
