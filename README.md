@@ -45,6 +45,7 @@ O domínio deverá separar, no mínimo:
 ## Tecnologia e decisões iniciais
 
 - React Native com Expo.
+- Expo SDK 57.
 - TypeScript.
 - Biome para formatação e lint.
 - `expo-sqlite` para persistência local e migrations versionadas.
@@ -96,6 +97,7 @@ src/
   types/             tipos compartilhados
   utils/             utilitários sem regra de domínio
   __tests__/         testes espelhando a source
+App.tsx              entrada do aplicativo Expo
 ```
 
 As telas não devem executar SQL diretamente. Repositories ou serviços de persistência serão responsáveis pelo acesso ao banco local. O algoritmo de revisão ficará em um módulo de domínio independente da camada de UI.
@@ -112,7 +114,7 @@ Casos de uso e repositories não devem depender diretamente da classe do SQLite.
 
 ### Fundação
 
-- [ ] Criar o projeto React Native com Expo e TypeScript.
+- [x] Criar o projeto React Native com Expo e TypeScript.
 - [ ] Configurar navegação, lint, formatação e testes.
 - [x] Criar tokens de espaçamento, tipografia, cores e temas claro/escuro.
 - [x] Configurar persistência local e migrations.
@@ -162,7 +164,7 @@ O workflow inicial está em `.github/workflows/ci.yml` e valida a documentação
 
 ## Desenvolvimento
 
-Os comandos definitivos serão adicionados quando a fundação Expo for criada. O fluxo esperado será:
+Com a fundação Expo configurada, o fluxo de desenvolvimento é:
 
 ```bash
 npm install

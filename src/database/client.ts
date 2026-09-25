@@ -10,11 +10,17 @@ function asMigrationDatabase(database: SQLiteDatabase): MigrationDatabase {
   };
 }
 
+export async function initializeDatabase(
+  database: SQLiteDatabase,
+): Promise<void> {
+  await database.execAsync("PRAGMA foreign_keys = ON");
+  await runMigrations(asMigrationDatabase(database));
+}
+
 export async function openDecklyDatabase(): Promise<SQLiteDatabase> {
   const database = await openDatabaseAsync(DATABASE_NAME);
 
-  await database.execAsync("PRAGMA foreign_keys = ON");
-  await runMigrations(asMigrationDatabase(database));
+  await initializeDatabase(database);
 
   return database;
 }
