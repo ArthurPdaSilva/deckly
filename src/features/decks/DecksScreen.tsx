@@ -1,3 +1,6 @@
+import * as DocumentPicker from "expo-document-picker";
+import * as FileSystem from "expo-file-system/legacy";
+import * as Sharing from "expo-sharing";
 import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useState } from "react";
 import {
@@ -13,6 +16,8 @@ import { notify } from "../../components/notifications";
 import { resetAndSeedDatabase } from "../../database/seed";
 import type { AppRoute } from "../../routes/types";
 import { useTheme } from "../../styles/ThemeProvider";
+import { parseExportData, serializeExportData } from "../dataTransfer/format";
+import { createDataTransferRepository } from "../dataTransfer/repository";
 import type { Deck } from "./domain/deck";
 import { createDeckRepository } from "./repository";
 import { createDeck, deleteDeck, listDecks, updateDeck } from "./useCases";
@@ -146,6 +151,61 @@ export function DecksScreen({
     }
   }
 
+  async function handleExportData() {
+    try {
+      const data = await createDataTransferRepository(database).exportData();
+      const directory = FileSystem.documentDirectory;
+
+      if (!directory) {
+        throw new Error("Armazenamento local indisponível");
+      }
+
+      const uri = `${directory}deckly-export-${Date.now()}.json`;
+      await FileSystem.writeAsStringAsync(
+        uri,
+        serializeExportData(data, new Date().toISOString()),
+        { encoding: FileSystem.EncodingType.UTF8 },
+      );
+      await Sharing.shareAsync(uri, {
+        dialogTitle: "Exportar dados do Deckly",
+        mimeType: "application/json",
+      });
+      notify.success("Dados exportados.");
+    } catch (cause) {
+      notify.error(
+        cause instanceof Error
+          ? cause.message
+          : "Não foi possível exportar os dados",
+      );
+    }
+  }
+
+  async function handleImportData() {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        copyToCacheDirectory: true,
+        type: "application/json",
+      });
+
+      if (result.canceled) {
+        return;
+      }
+
+      const content = await FileSystem.readAsStringAsync(result.assets[0].uri);
+      const data = parseExportData(content);
+      await createDataTransferRepository(database).importData(data);
+      const importedDecks = await listDecks(createDeckRepository(database));
+      setDecks(importedDecks);
+      notify.success("Dados importados.");
+    } catch (cause) {
+      notify.error(
+        cause instanceof Error
+          ? cause.message
+          : "Não foi possível importar os dados",
+      );
+    }
+  }
+
   const styles = StyleSheet.create({
     container: {
       backgroundColor: theme.colors.background,
@@ -271,6 +331,24 @@ export function DecksScreen({
       color: theme.colors.warning,
       fontSize: theme.typography.bodySmall,
       fontWeight: "700",
+    },
+    dataActions: {
+      flexDirection: "row",
+      gap: theme.spacing.sm,
+      marginTop: theme.spacing.md,
+    },
+    dataButton: {
+      borderColor: theme.colors.border,
+      borderRadius: 12,
+      borderWidth: 1,
+      flex: 1,
+      padding: theme.spacing.sm,
+    },
+    dataButtonLabel: {
+      color: theme.colors.textSecondary,
+      fontSize: theme.typography.bodySmall,
+      fontWeight: "700",
+      textAlign: "center",
     },
     createButton: {
       alignItems: "center",
@@ -446,6 +524,20 @@ export function DecksScreen({
             <Text style={styles.seedButtonLabel}>Carregar dados de teste</Text>
           </Pressable>
         ) : null}
+        <View style={styles.dataActions}>
+          <Pressable
+            onPress={() => void handleExportData()}
+            style={styles.dataButton}
+          >
+            <Text style={styles.dataButtonLabel}>Exportar dados</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => void handleImportData()}
+            style={styles.dataButton}
+          >
+            <Text style={styles.dataButtonLabel}>Importar dados</Text>
+          </Pressable>
+        </View>
         {error ? <Text style={styles.error}>{error}</Text> : null}
         {isLoading ? (
           <Text style={styles.empty}>Carregando baralhos...</Text>

@@ -121,6 +121,8 @@ O schema inicial contém baralhos, cartões, histórico de revisões e estado do
 
 Em desenvolvimento, a tela de baralhos exibe **Carregar dados de teste**. Após a confirmação, o Deckly apaga decks, cartões e histórico em uma transação e insere 6 decks temáticos com 24 cartões, incluindo cartões novos, vencidos e com diferentes estados de repetição. Essa ação não é exibida em builds de produção e não é executada automaticamente na abertura do app.
 
+Os botões **Exportar dados** e **Importar dados** permitem transportar decks, cartões e histórico em um arquivo JSON local. A importação valida referências e faz merge por ID, sem apagar registros existentes.
+
 Casos de uso e repositories não devem depender diretamente da classe do SQLite. Essa fronteira permite criar posteriormente outro adaptador de persistência, inclusive para um banco relacional remoto ou MongoDB, sem alterar a interface da sessão de estudo.
 
 ## Roadmap inicial
@@ -145,13 +147,14 @@ Casos de uso e repositories não devem depender diretamente da classe do SQLite.
 - [x] Editar e excluir flashcards.
 - [x] Implementar sessão de revisão.
 - [x] Implementar avaliação da resposta.
+- [x] Exibir progresso da sessão e resumo ao concluir.
 - [x] Implementar o primeiro agendador baseado em SM-2.
 - [x] Salvar histórico e próxima revisão offline.
 
 ### Evolução
 
 - [x] Dashboard de progresso offline com métricas de revisão.
-- [ ] Importação e exportação de dados.
+- [x] Importação e exportação de dados em JSON.
 - [ ] Backup local.
 - [ ] Internacionalização da interface.
 - [ ] Avaliação de FSRS como alternativa de agendamento.

@@ -38,6 +38,7 @@ describe("ReviewScreen", () => {
     );
 
     await waitFor(() => expect(screen.getByText("Hello")).toBeTruthy());
+    expect(screen.getByText("Cartão 1 de 1")).toBeTruthy();
     expect(screen.getByTestId("review-content").props.style).toEqual(
       expect.objectContaining({ justifyContent: "center" }),
     );
@@ -60,5 +61,7 @@ describe("ReviewScreen", () => {
         "1",
       );
     });
+    expect(screen.getByText("Sessão concluída")).toBeTruthy();
+    expect(screen.getByText("1 cartão revisado.")).toBeTruthy();
   });
 });
