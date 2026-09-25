@@ -1,6 +1,7 @@
 import { fireEvent, render, waitFor } from "@testing-library/react-native";
 import { useSQLiteContext } from "expo-sqlite";
 import { DecksScreen } from "../../../features/decks/DecksScreen";
+import { AppRouter } from "../../../routes/AppRouter";
 import { ThemeProvider } from "../../../styles/ThemeProvider";
 
 jest.mock("expo-sqlite", () => ({
@@ -17,7 +18,7 @@ describe("DecksScreen", () => {
 
     const screen = render(
       <ThemeProvider mode="light">
-        <DecksScreen />
+        <AppRouter />
       </ThemeProvider>,
     );
 
@@ -49,7 +50,7 @@ describe("DecksScreen", () => {
 
     const screen = render(
       <ThemeProvider mode="light">
-        <DecksScreen />
+        <AppRouter />
       </ThemeProvider>,
     );
 
@@ -61,6 +62,28 @@ describe("DecksScreen", () => {
     await waitFor(() => {
       expect(database.execAsync).toHaveBeenCalledWith("BEGIN");
     });
+  });
+
+  it("opens the progress dashboard", async () => {
+    const database = {
+      runAsync: jest.fn().mockResolvedValue(undefined),
+      getFirstAsync: jest.fn().mockResolvedValue({ count: 0, average: null }),
+      getAllAsync: jest.fn().mockResolvedValue([]),
+    };
+    jest.mocked(useSQLiteContext).mockReturnValue(database as never);
+
+    const screen = render(
+      <ThemeProvider mode="light">
+        <AppRouter />
+      </ThemeProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByText("Ver progresso")).toBeTruthy());
+    fireEvent.press(screen.getByText("Ver progresso"));
+
+    await waitFor(() =>
+      expect(screen.getByText("0 revisões hoje")).toBeTruthy(),
+    );
   });
 
   it("edits a deck from the list", async () => {
@@ -80,7 +103,7 @@ describe("DecksScreen", () => {
 
     const screen = render(
       <ThemeProvider mode="light">
-        <DecksScreen />
+        <AppRouter />
       </ThemeProvider>,
     );
 
@@ -124,7 +147,7 @@ describe("DecksScreen", () => {
 
     const screen = render(
       <ThemeProvider mode="light">
-        <DecksScreen />
+        <AppRouter />
       </ThemeProvider>,
     );
 

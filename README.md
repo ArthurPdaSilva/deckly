@@ -81,7 +81,7 @@ Exemplos de tokens semânticos:
 - `danger`;
 - `success`.
 
-Uma futura preferência de tema deverá ser persistida localmente. A estrutura também deve permitir seguir a preferência do sistema sem alterar os componentes.
+O tema pode ser alternado entre claro e escuro pelas telas inicial e de progresso. A preferência ainda não é persistida localmente; enquanto o app estiver aberto, o provider mantém a escolha do usuário. A estrutura também permite seguir a preferência do sistema por padrão.
 
 ## Internacionalização
 
@@ -128,8 +128,9 @@ Casos de uso e repositories não devem depender diretamente da classe do SQLite.
 ### Fundação
 
 - [x] Criar o projeto React Native com Expo e TypeScript.
-- [ ] Configurar navegação, lint, formatação e testes.
+- [x] Configurar navegação, lint, formatação e testes.
 - [x] Criar tokens de espaçamento, tipografia, cores e temas claro/escuro.
+- [x] Persistir e restaurar a preferência de tema localmente.
 - [x] Configurar persistência local e migrations.
 - [x] Configurar CI no GitHub Actions.
 
@@ -149,7 +150,7 @@ Casos de uso e repositories não devem depender diretamente da classe do SQLite.
 
 ### Evolução
 
-- [ ] Dashboard de progresso.
+- [x] Dashboard de progresso offline com métricas de revisão.
 - [ ] Importação e exportação de dados.
 - [ ] Backup local.
 - [ ] Internacionalização da interface.

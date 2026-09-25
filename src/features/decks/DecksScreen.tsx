@@ -11,16 +11,21 @@ import {
 import { AnimatedScreen } from "../../components/AnimatedScreen";
 import { notify } from "../../components/notifications";
 import { resetAndSeedDatabase } from "../../database/seed";
+import type { AppRoute } from "../../routes/types";
 import { useTheme } from "../../styles/ThemeProvider";
-import { CardsScreen } from "../cards/CardsScreen";
-import { ReviewScreen } from "../review/ReviewScreen";
 import type { Deck } from "./domain/deck";
 import { createDeckRepository } from "./repository";
 import { createDeck, deleteDeck, listDecks, updateDeck } from "./useCases";
 
-export function DecksScreen() {
+interface DecksScreenProps {
+  onNavigate?: (route: AppRoute) => void;
+}
+
+export function DecksScreen({
+  onNavigate = () => undefined,
+}: DecksScreenProps) {
   const database = useSQLiteContext();
-  const { theme } = useTheme();
+  const { mode, theme, toggleTheme } = useTheme();
   const [decks, setDecks] = useState<Deck[]>([]);
   const [name, setName] = useState("");
   const [editingName, setEditingName] = useState("");
@@ -28,9 +33,7 @@ export function DecksScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [editingDeck, setEditingDeck] = useState<Deck | null>(null);
   const [deckPendingDelete, setDeckPendingDelete] = useState<Deck | null>(null);
-  const [selectedDeck, setSelectedDeck] = useState<Deck | null>(null);
   const [seedPending, setSeedPending] = useState(false);
-  const [isReviewing, setIsReviewing] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -143,16 +146,6 @@ export function DecksScreen() {
     }
   }
 
-  if (selectedDeck) {
-    return (
-      <CardsScreen deck={selectedDeck} onBack={() => setSelectedDeck(null)} />
-    );
-  }
-
-  if (isReviewing) {
-    return <ReviewScreen onBack={() => setIsReviewing(false)} />;
-  }
-
   const styles = StyleSheet.create({
     container: {
       backgroundColor: theme.colors.background,
@@ -189,6 +182,20 @@ export function DecksScreen() {
       fontSize: theme.typography.body,
       lineHeight: 23,
       marginBottom: theme.spacing.lg,
+    },
+    themeButton: {
+      alignSelf: "flex-start",
+      borderColor: theme.colors.border,
+      borderRadius: 12,
+      borderWidth: 1,
+      marginBottom: theme.spacing.md,
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: theme.spacing.sm,
+    },
+    themeButtonLabel: {
+      color: theme.colors.textSecondary,
+      fontSize: theme.typography.bodySmall,
+      fontWeight: "700",
     },
     input: {
       backgroundColor: theme.colors.surface,
@@ -294,6 +301,19 @@ export function DecksScreen() {
       fontSize: theme.typography.body,
       fontWeight: "800",
     },
+    progressButton: {
+      alignItems: "center",
+      borderColor: theme.colors.primaryMuted,
+      borderRadius: 16,
+      borderWidth: 1,
+      justifyContent: "center",
+      marginBottom: theme.spacing.md,
+      minHeight: 48,
+    },
+    progressButtonLabel: {
+      color: theme.colors.primary,
+      fontWeight: "700",
+    },
     cancelButton: {
       alignItems: "center",
       borderColor: theme.colors.border,
@@ -382,11 +402,22 @@ export function DecksScreen() {
         <Text style={styles.subtitle}>
           Pequenas revisões. Memórias que ficam.
         </Text>
+        <Pressable onPress={toggleTheme} style={styles.themeButton}>
+          <Text style={styles.themeButtonLabel}>
+            {mode === "dark" ? "Usar tema claro" : "Usar tema escuro"}
+          </Text>
+        </Pressable>
         <Pressable
-          onPress={() => setIsReviewing(true)}
+          onPress={() => onNavigate({ name: "review" })}
           style={styles.reviewButton}
         >
           <Text style={styles.reviewButtonLabel}>Começar revisão</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => onNavigate({ name: "statistics" })}
+          style={styles.progressButton}
+        >
+          <Text style={styles.progressButtonLabel}>Ver progresso</Text>
         </Pressable>
         <TextInput
           accessibilityLabel="Nome do baralho"
@@ -428,7 +459,7 @@ export function DecksScreen() {
             renderItem={({ item }) => (
               <Pressable
                 testID={`deck-${item.id}`}
-                onPress={() => setSelectedDeck(item)}
+                onPress={() => onNavigate({ name: "cards", deck: item })}
                 style={({ pressed }) => [
                   styles.deck,
                   pressed && styles.deckPressed,
