@@ -17,9 +17,11 @@ Deckly é um aplicativo React Native para flashcards e repetição espaçada. A 
 
 ## Arquitetura
 
-Organizar o código por domínio dentro de `src/features/`. Componentes genéricos ficam em `src/components/`; tokens e temas ficam em `src/styles/`; persistência fica em `src/database/`.
+Organizar o código por domínio dentro de `src/features/`. Componentes genéricos ficam em `src/components/`; tokens e temas ficam em `src/styles/`; persistência fica em `src/database/` usando `expo-sqlite` na primeira versão.
 
 As telas e stores não devem executar SQL diretamente. O acesso ao armazenamento deve passar por repositories ou serviços próprios. Regras de negócio devem permanecer testáveis sem renderizar componentes.
+
+Migrations devem ser incrementais, transacionais e controladas por `PRAGMA user_version`. Não apagar ou substituir dados existentes sem uma migration explícita e testes de compatibilidade. A camada de domínio deve depender de contratos, não da implementação do SQLite, para permitir adaptadores relacionais ou documentais no futuro.
 
 ## Agendamento de revisões
 

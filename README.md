@@ -46,7 +46,8 @@ O domínio deverá separar, no mínimo:
 
 - React Native com Expo.
 - TypeScript.
-- Persistência local para operação offline.
+- Biome para formatação e lint.
+- `expo-sqlite` para persistência local e migrations versionadas.
 - `StyleSheet` nativo do React Native.
 - Design system próprio baseado em tokens semânticos.
 - Testes automatizados desde a primeira funcionalidade.
@@ -99,15 +100,23 @@ src/
 
 As telas não devem executar SQL diretamente. Repositories ou serviços de persistência serão responsáveis pelo acesso ao banco local. O algoritmo de revisão ficará em um módulo de domínio independente da camada de UI.
 
+## Persistência local
+
+O banco local inicial é o `deckly.db`, aberto pelo `expo-sqlite`. O acesso passa por `src/database/client.ts`, enquanto as migrations ficam em `src/database/migrations.ts` e são executadas dentro de uma transação usando `PRAGMA user_version`.
+
+O schema inicial contém baralhos, cartões, histórico de revisões e estado do aplicativo. O histórico é mantido separado do estado atual dos cartões para permitir a evolução do agendador sem perder dados anteriores.
+
+Casos de uso e repositories não devem depender diretamente da classe do SQLite. Essa fronteira permite criar posteriormente outro adaptador de persistência, inclusive para um banco relacional remoto ou MongoDB, sem alterar a interface da sessão de estudo.
+
 ## Roadmap inicial
 
 ### Fundação
 
 - [ ] Criar o projeto React Native com Expo e TypeScript.
 - [ ] Configurar navegação, lint, formatação e testes.
-- [ ] Criar tokens de espaçamento, tipografia, cores e temas claro/escuro.
-- [ ] Configurar persistência local e migrations.
-- [ ] Configurar CI no GitHub Actions.
+- [x] Criar tokens de espaçamento, tipografia, cores e temas claro/escuro.
+- [x] Configurar persistência local e migrations.
+- [x] Configurar CI no GitHub Actions.
 
 ### Primeiro fluxo funcional
 
