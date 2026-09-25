@@ -9,6 +9,7 @@ import {
   View,
 } from "react-native";
 import { useTheme } from "../../styles/ThemeProvider";
+import { CardsScreen } from "../cards/CardsScreen";
 import type { Deck } from "./domain/deck";
 import { createDeckRepository } from "./repository";
 import { createDeck, deleteDeck, listDecks, updateDeck } from "./useCases";
@@ -22,6 +23,7 @@ export function DecksScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [editingDeck, setEditingDeck] = useState<Deck | null>(null);
   const [deckPendingDelete, setDeckPendingDelete] = useState<Deck | null>(null);
+  const [selectedDeck, setSelectedDeck] = useState<Deck | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -106,6 +108,12 @@ export function DecksScreen() {
       handleCancelEdit();
     }
     setDeckPendingDelete(null);
+  }
+
+  if (selectedDeck) {
+    return (
+      <CardsScreen deck={selectedDeck} onBack={() => setSelectedDeck(null)} />
+    );
   }
 
   const styles = StyleSheet.create({
@@ -292,7 +300,9 @@ export function DecksScreen() {
           }
           renderItem={({ item }) => (
             <View style={styles.deck}>
-              <Text style={styles.deckName}>{item.name}</Text>
+              <Pressable onPress={() => setSelectedDeck(item)}>
+                <Text style={styles.deckName}>{item.name}</Text>
+              </Pressable>
               {item.description ? (
                 <Text style={styles.deckDescription}>{item.description}</Text>
               ) : null}

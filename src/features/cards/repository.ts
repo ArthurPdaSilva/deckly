@@ -1,0 +1,69 @@
+import type { SQLiteBindValue } from "expo-sqlite";
+import type { FlashcardRepository } from "./domain/flashcard";
+
+export interface FlashcardDatabase {
+  runAsync(sql: string, ...params: SQLiteBindValue[]): Promise<unknown>;
+  getAllAsync<T>(sql: string, ...params: SQLiteBindValue[]): Promise<T[]>;
+}
+
+interface FlashcardRow {
+  id: string;
+  deck_id: string;
+  front: string;
+  back: string;
+  due_at: string;
+  interval_days: number;
+  ease_factor: number;
+  repetitions: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export function createFlashcardRepository(
+  database: FlashcardDatabase,
+): FlashcardRepository {
+  return {
+    async save(card) {
+      await database.runAsync(
+        `INSERT INTO cards (
+          id, deck_id, front, back, due_at, interval_days,
+          ease_factor, repetitions, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        card.id,
+        card.deckId,
+        card.front,
+        card.back,
+        card.dueAt,
+        card.intervalDays,
+        card.easeFactor,
+        card.repetitions,
+        card.createdAt,
+        card.updatedAt,
+      );
+    },
+
+    async findByDeckId(deckId) {
+      const rows = await database.getAllAsync<FlashcardRow>(
+        `SELECT id, deck_id, front, back, due_at, interval_days,
+          ease_factor, repetitions, created_at, updated_at
+         FROM cards
+         WHERE deck_id = ?
+         ORDER BY created_at ASC`,
+        deckId,
+      );
+
+      return rows.map((row) => ({
+        id: row.id,
+        deckId: row.deck_id,
+        front: row.front,
+        back: row.back,
+        dueAt: row.due_at,
+        intervalDays: row.interval_days,
+        easeFactor: row.ease_factor,
+        repetitions: row.repetitions,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      }));
+    },
+  };
+}
