@@ -24,7 +24,6 @@ jobs:
 
   app:
     name: App quality
-    if: hashFiles('package-lock.json') != ''
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

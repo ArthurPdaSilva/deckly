@@ -158,7 +158,7 @@ npm test -- --runInBand --coverage
 
 O GitHub Actions deverá executar essas verificações em pull requests e em pushes para `main`. Falhas de tipos, formatação, lint ou testes devem bloquear a integração.
 
-O workflow inicial está em `.github/workflows/ci.yml`. Enquanto a fundação Expo ainda não existir, ele valida a documentação e mantém as verificações do aplicativo condicionadas à presença de `package-lock.json`. A etapa de distribuição será adicionada quando houver uma plataforma de build definida, como EAS para Android e iOS.
+O workflow inicial está em `.github/workflows/ci.yml` e valida a documentação e a qualidade do aplicativo. A etapa de distribuição será adicionada quando houver uma plataforma de build definida, como EAS para Android e iOS.
 
 ## Desenvolvimento
 
