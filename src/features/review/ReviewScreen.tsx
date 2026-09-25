@@ -1,6 +1,13 @@
 import { useSQLiteContext } from "expo-sqlite";
-import { useEffect, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { type PropsWithChildren, useEffect, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  Animated,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { AnimatedScreen } from "../../components/AnimatedScreen";
 import { notify } from "../../components/notifications";
 import { useTheme } from "../../styles/ThemeProvider";
@@ -93,7 +100,7 @@ export function ReviewScreen({ now = new Date(), onBack }: ReviewScreenProps) {
     },
     sessionContent: {
       flex: 1,
-      justifyContent: "center",
+      justifyContent: "flex-start",
       paddingBottom: theme.spacing.xl,
     },
     eyebrow: {
@@ -108,9 +115,31 @@ export function ReviewScreen({ now = new Date(), onBack }: ReviewScreenProps) {
       fontWeight: "700",
       marginTop: theme.spacing.xs,
     },
+    progressHeader: {
+      alignItems: "center",
+      flexDirection: "row",
+      justifyContent: "space-between",
+      marginTop: theme.spacing.lg,
+    },
     progress: {
       color: theme.colors.textSecondary,
+      fontWeight: "600",
+    },
+    progressPercent: {
+      color: theme.colors.primary,
+      fontWeight: "800",
+    },
+    progressTrack: {
+      backgroundColor: theme.colors.primaryMuted,
+      borderRadius: 99,
+      height: 8,
       marginTop: theme.spacing.sm,
+      overflow: "hidden",
+    },
+    progressFill: {
+      backgroundColor: theme.colors.primary,
+      borderRadius: 99,
+      height: "100%",
     },
     card: {
       backgroundColor: theme.colors.surfaceElevated,
@@ -149,6 +178,10 @@ export function ReviewScreen({ now = new Date(), onBack }: ReviewScreenProps) {
       color: theme.colors.primary,
       fontWeight: "700",
     },
+    controlPressed: {
+      opacity: 0.82,
+      transform: [{ scale: 0.98 }],
+    },
     ratings: {
       flexDirection: "row",
       gap: theme.spacing.sm,
@@ -170,20 +203,42 @@ export function ReviewScreen({ now = new Date(), onBack }: ReviewScreenProps) {
       fontSize: theme.typography.body,
       marginTop: theme.spacing.xl,
     },
+    loading: {
+      alignItems: "center",
+      gap: theme.spacing.sm,
+      justifyContent: "center",
+      marginTop: theme.spacing.xl,
+    },
+    loadingLabel: {
+      color: theme.colors.textSecondary,
+    },
     summaryTitle: {
+      backgroundColor: theme.colors.surfaceElevated,
+      borderColor: theme.colors.primaryMuted,
+      borderRadius: 22,
+      borderWidth: 1,
       color: theme.colors.text,
       fontSize: theme.typography.heading,
       fontWeight: "700",
       marginTop: theme.spacing.xl,
+      padding: theme.spacing.xl,
+      textAlign: "center",
     },
     summaryText: {
+      backgroundColor: theme.colors.surfaceElevated,
       color: theme.colors.textSecondary,
       fontSize: theme.typography.body,
-      marginTop: theme.spacing.sm,
+      marginTop: -theme.spacing.xl,
+      paddingBottom: theme.spacing.xl,
+      paddingHorizontal: theme.spacing.xl,
+      textAlign: "center",
     },
   });
 
   const currentCard = cards[0];
+  const reviewedCount = totalCards - cards.length;
+  const progressRatio = totalCards === 0 ? 0 : reviewedCount / totalCards;
+  const progressPercent = Math.round(progressRatio * 100);
 
   return (
     <AnimatedScreen>
@@ -195,51 +250,85 @@ export function ReviewScreen({ now = new Date(), onBack }: ReviewScreenProps) {
           <Text style={styles.eyebrow}>SESSÃO DE HOJE</Text>
           <Text style={styles.title}>Revisar</Text>
           {isLoading ? (
-            <Text style={styles.empty}>Preparando sua sessão...</Text>
+            <View style={styles.loading}>
+              <ActivityIndicator
+                color={theme.colors.primary}
+                testID="review-loading"
+              />
+              <Text style={styles.loadingLabel}>Preparando sua sessão...</Text>
+            </View>
           ) : currentCard ? (
             <>
-              <Text style={styles.progress}>
-                Cartão {totalCards - cards.length + 1} de {totalCards}
-              </Text>
-              <View style={styles.card}>
-                <Text style={styles.label}>Frente</Text>
-                <Text style={styles.content}>{currentCard.front}</Text>
-                {showAnswer ? (
-                  <View style={styles.divider}>
-                    <Text style={styles.label}>Verso</Text>
-                    <Text style={styles.content}>{currentCard.back}</Text>
-                  </View>
-                ) : (
-                  <Pressable
-                    onPress={() => setShowAnswer(true)}
-                    style={styles.reveal}
-                  >
-                    <Text style={styles.revealLabel}>Mostrar resposta</Text>
-                  </Pressable>
-                )}
-                {showAnswer ? (
-                  <View style={styles.ratings}>
-                    <Pressable
-                      onPress={() => void handleRate(2)}
-                      style={styles.rating}
-                    >
-                      <Text style={styles.ratingLabel}>Difícil</Text>
-                    </Pressable>
-                    <Pressable
-                      onPress={() => void handleRate(4)}
-                      style={styles.rating}
-                    >
-                      <Text style={styles.ratingLabel}>Bom</Text>
-                    </Pressable>
-                    <Pressable
-                      onPress={() => void handleRate(5)}
-                      style={styles.rating}
-                    >
-                      <Text style={styles.ratingLabel}>Fácil</Text>
-                    </Pressable>
-                  </View>
-                ) : null}
+              <View style={styles.progressHeader}>
+                <Text
+                  style={styles.progress}
+                >{`Cartão ${reviewedCount + 1} de ${totalCards}`}</Text>
+                <Text
+                  style={styles.progressPercent}
+                >{`${progressPercent}%`}</Text>
               </View>
+              <View style={styles.progressTrack}>
+                <View
+                  testID="review-progress-fill"
+                  style={[
+                    styles.progressFill,
+                    { width: `${progressPercent}%` },
+                  ]}
+                />
+              </View>
+              <AnimatedReviewCard key={currentCard.id}>
+                <View style={styles.card}>
+                  <Text style={styles.label}>Frente</Text>
+                  <Text style={styles.content}>{currentCard.front}</Text>
+                  {showAnswer ? (
+                    <View style={styles.divider}>
+                      <Text style={styles.label}>Verso</Text>
+                      <Text style={styles.content}>{currentCard.back}</Text>
+                    </View>
+                  ) : (
+                    <Pressable
+                      onPress={() => setShowAnswer(true)}
+                      style={({ pressed }) => [
+                        styles.reveal,
+                        pressed && styles.controlPressed,
+                      ]}
+                    >
+                      <Text style={styles.revealLabel}>Mostrar resposta</Text>
+                    </Pressable>
+                  )}
+                  {showAnswer ? (
+                    <View style={styles.ratings}>
+                      <Pressable
+                        onPress={() => void handleRate(2)}
+                        style={({ pressed }) => [
+                          styles.rating,
+                          pressed && styles.controlPressed,
+                        ]}
+                      >
+                        <Text style={styles.ratingLabel}>Difícil</Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => void handleRate(4)}
+                        style={({ pressed }) => [
+                          styles.rating,
+                          pressed && styles.controlPressed,
+                        ]}
+                      >
+                        <Text style={styles.ratingLabel}>Bom</Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => void handleRate(5)}
+                        style={({ pressed }) => [
+                          styles.rating,
+                          pressed && styles.controlPressed,
+                        ]}
+                      >
+                        <Text style={styles.ratingLabel}>Fácil</Text>
+                      </Pressable>
+                    </View>
+                  ) : null}
+                </View>
+              </AnimatedReviewCard>
             </>
           ) : totalCards > 0 ? (
             <>
@@ -254,5 +343,39 @@ export function ReviewScreen({ now = new Date(), onBack }: ReviewScreenProps) {
         </View>
       </View>
     </AnimatedScreen>
+  );
+}
+
+interface AnimatedReviewCardProps extends PropsWithChildren {}
+
+function AnimatedReviewCard({ children }: AnimatedReviewCardProps) {
+  const opacity = useRef(new Animated.Value(0)).current;
+  const translateX = useRef(new Animated.Value(20)).current;
+
+  useEffect(() => {
+    opacity.setValue(0);
+    translateX.setValue(20);
+    const animation = Animated.parallel([
+      Animated.timing(opacity, {
+        duration: 220,
+        toValue: 1,
+        useNativeDriver: true,
+      }),
+      Animated.timing(translateX, {
+        duration: 260,
+        toValue: 0,
+        useNativeDriver: true,
+      }),
+    ]);
+
+    animation.start();
+
+    return () => animation.stop();
+  }, [opacity, translateX]);
+
+  return (
+    <Animated.View style={{ opacity, transform: [{ translateX }] }}>
+      {children}
+    </Animated.View>
   );
 }
