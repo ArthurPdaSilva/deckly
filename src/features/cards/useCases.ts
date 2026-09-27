@@ -19,11 +19,11 @@ export async function createFlashcard(
   const back = input.back.trim();
 
   if (!front) {
-    throw new Error("Flashcard front cannot be empty");
+    throw new Error("A frente do cartão não pode ficar vazia");
   }
 
   if (!back) {
-    throw new Error("Flashcard back cannot be empty");
+    throw new Error("O verso do cartão não pode ficar vazio");
   }
 
   const timestamp = options.now.toISOString();
@@ -61,11 +61,11 @@ export async function updateFlashcard(
   const back = input.back.trim();
 
   if (!front) {
-    throw new Error("Flashcard front cannot be empty");
+    throw new Error("A frente do cartão não pode ficar vazia");
   }
 
   if (!back) {
-    throw new Error("Flashcard back cannot be empty");
+    throw new Error("O verso do cartão não pode ficar vazio");
   }
 
   const card: Flashcard = {

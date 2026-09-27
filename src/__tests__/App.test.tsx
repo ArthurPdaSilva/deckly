@@ -17,8 +17,7 @@ describe("App", () => {
     const screen = render(<App />);
 
     await waitFor(() => {
-      expect(screen.getByText("Seus baralhos")).toBeTruthy();
-      expect(screen.getByText("Nenhum baralho criado ainda.")).toBeTruthy();
+      expect(screen.getByText("Início")).toBeTruthy();
     });
     expect(SQLiteProvider).toBeDefined();
   });

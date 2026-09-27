@@ -59,4 +59,33 @@ describe("data transfer format", () => {
       ),
     ).toThrow("baralho inexistente");
   });
+
+  it("preserves groups and validates deck group references", () => {
+    const grouped = {
+      ...data,
+      groups: [
+        {
+          id: "group-1",
+          name: "Idiomas",
+          createdAt: "2026-01-01T10:00:00.000Z",
+          updatedAt: "2026-01-01T10:00:00.000Z",
+          sortOrder: 0,
+        },
+      ],
+      decks: [{ ...data.decks[0], groupId: "group-1", sortOrder: 0 }],
+    };
+
+    expect(
+      parseExportData(serializeExportData(grouped, "2026-03-15T00:00:00.000Z"))
+        .groups?.[0].name,
+    ).toBe("Idiomas");
+    expect(() =>
+      parseExportData(
+        serializeExportData(
+          { ...grouped, decks: [{ ...grouped.decks[0], groupId: "missing" }] },
+          "2026-03-15T00:00:00.000Z",
+        ),
+      ),
+    ).toThrow("grupo inexistente");
+  });
 });

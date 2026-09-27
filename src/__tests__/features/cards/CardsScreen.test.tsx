@@ -17,41 +17,26 @@ const deck: Deck = {
 };
 
 describe("CardsScreen", () => {
-  it("creates a flashcard and displays its front", async () => {
+  it("opens the card creation screen", async () => {
     const database = {
       runAsync: jest.fn().mockResolvedValue(undefined),
       getAllAsync: jest.fn().mockResolvedValue([]),
     };
     jest.mocked(useSQLiteContext).mockReturnValue(database as never);
 
+    const onCreateCard = jest.fn();
     const screen = render(
       <ThemeProvider mode="light">
-        <CardsScreen deck={deck} onBack={jest.fn()} />
+        <CardsScreen
+          deck={deck}
+          onBack={jest.fn()}
+          onCreateCard={onCreateCard}
+        />
       </ThemeProvider>,
     );
 
-    fireEvent.changeText(
-      screen.getByPlaceholderText("Frente do cartão"),
-      "Hello",
-    );
-    fireEvent.changeText(screen.getByPlaceholderText("Verso do cartão"), "Olá");
-    fireEvent.press(screen.getByText("Adicionar cartão"));
-
-    await waitFor(() => {
-      expect(database.runAsync).toHaveBeenCalledWith(
-        expect.stringContaining("INSERT INTO cards"),
-        expect.any(String),
-        "deck-1",
-        "Hello",
-        "Olá",
-        expect.any(String),
-        0,
-        2.5,
-        0,
-        expect.any(String),
-        expect.any(String),
-      );
-    });
+    fireEvent.press(screen.getByText("Novo cartão"));
+    expect(onCreateCard).toHaveBeenCalled();
   });
 
   it("edits a flashcard", async () => {
@@ -74,37 +59,18 @@ describe("CardsScreen", () => {
     };
     jest.mocked(useSQLiteContext).mockReturnValue(database as never);
 
+    const onEditCard = jest.fn();
     const screen = render(
       <ThemeProvider mode="light">
-        <CardsScreen deck={deck} onBack={jest.fn()} />
+        <CardsScreen deck={deck} onBack={jest.fn()} onEditCard={onEditCard} />
       </ThemeProvider>,
     );
 
     await waitFor(() => expect(screen.getByText("Hello")).toBeTruthy());
     fireEvent.press(screen.getByText("Editar"));
-    expect(screen.getByText("Editar cartão")).toBeTruthy();
-    expect(screen.getByTestId("card-editor").props.style).toEqual(
-      expect.objectContaining({ backgroundColor: "#FFFFFF" }),
+    expect(onEditCard).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "card-1" }),
     );
-    fireEvent.changeText(
-      screen.getByPlaceholderText("Frente para edição"),
-      "Hi",
-    );
-    fireEvent.changeText(
-      screen.getByPlaceholderText("Verso para edição"),
-      "Oi",
-    );
-    fireEvent.press(screen.getByText("Salvar edição"));
-
-    await waitFor(() => {
-      expect(database.runAsync).toHaveBeenCalledWith(
-        expect.stringContaining("UPDATE cards"),
-        "Hi",
-        "Oi",
-        expect.any(String),
-        "card-1",
-      );
-    });
   });
 
   it("asks for confirmation before deleting a flashcard", async () => {

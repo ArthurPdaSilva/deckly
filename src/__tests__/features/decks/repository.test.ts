@@ -23,6 +23,8 @@ describe("SQLite deck repository", () => {
       deck.id,
       deck.name,
       deck.description,
+      null,
+      0,
       deck.createdAt,
       deck.updatedAt,
     );
@@ -51,10 +53,12 @@ describe("SQLite deck repository", () => {
         description: "",
         createdAt: "2026-01-02T10:00:00.000Z",
         updatedAt: "2026-01-02T10:00:00.000Z",
+        groupId: undefined,
+        sortOrder: undefined,
       },
     ]);
     expect(database.getAllAsync).toHaveBeenCalledWith(
-      expect.stringContaining("ORDER BY updated_at DESC"),
+      expect.stringContaining("ORDER BY sort_order ASC"),
     );
   });
 
@@ -80,6 +84,8 @@ describe("SQLite deck repository", () => {
       expect.stringContaining("UPDATE decks"),
       deck.name,
       deck.description,
+      null,
+      0,
       deck.updatedAt,
       deck.id,
     );

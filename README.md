@@ -13,6 +13,7 @@ O Deckly deve transformar revisões curtas e consistentes em um hábito de apren
 - criar e organizar baralhos;
 - criar, editar e excluir flashcards;
 - revisar cartões em sessões diárias;
+- revisar todos os cartões ou somente um baralho;
 - avaliar a dificuldade de cada resposta;
 - agendar a próxima revisão localmente;
 - acompanhar progresso e desempenho;
@@ -85,9 +86,9 @@ O tema pode ser alternado entre claro e escuro pelas telas inicial e de progress
 
 ## Internacionalização
 
-O idioma inicial da interface será português brasileiro. A arquitetura deve evitar textos espalhados em regras de negócio e componentes, deixando a internacionalização preparada para português brasileiro e inglês em uma etapa posterior.
+O idioma inicial da interface é português brasileiro. A interface usa catálogos de tradução para português brasileiro e inglês; a preferência é persistida localmente em `app_state` e a troca atualiza os textos imediatamente.
 
-A troca de idioma pelo usuário não faz parte da primeira versão.
+O idioma pode ser alterado em Configurações entre `Português (Brasil)` e `English`. Nomes e conteúdos criados pelo usuário não são traduzidos automaticamente.
 
 ## Estrutura planejada
 
@@ -115,13 +116,15 @@ As telas não devem executar SQL diretamente. Repositories ou serviços de persi
 
 O banco local inicial é o `deckly.db`, aberto pelo `expo-sqlite`. O acesso passa por `src/database/client.ts`, enquanto as migrations ficam em `src/database/migrations.ts` e são executadas dentro de uma transação usando `PRAGMA user_version`.
 
-O schema inicial contém baralhos, cartões, histórico de revisões e estado do aplicativo. O histórico é mantido separado do estado atual dos cartões para permitir a evolução do agendador sem perder dados anteriores.
+O schema contém grupos e baralhos, cartões, histórico de revisões e estado do aplicativo. Grupos podem ser excluídos sem apagar seus baralhos, que ficam em `Sem grupo`. A ordem dos grupos e baralhos é persistida. O histórico é mantido separado do estado atual dos cartões para permitir a evolução do agendador sem perder dados anteriores.
 
 ### Dados de teste
 
-Em desenvolvimento, a tela de baralhos exibe **Carregar dados de teste**. Após a confirmação, o Deckly apaga decks, cartões e histórico em uma transação e insere 6 decks temáticos com 24 cartões, incluindo cartões novos, vencidos e com diferentes estados de repetição. Essa ação não é exibida em builds de produção e não é executada automaticamente na abertura do app.
+Em desenvolvimento, a tela **Configurações** exibe **Carregar dados de teste**. Após a confirmação, o Deckly apaga grupos, decks, cartões e histórico em uma transação e insere grupos, 9 decks temáticos e mais de 30 cartões, incluindo cartões novos, vencidos e com diferentes estados de repetição. Essa ação não é exibida em builds de produção e não é executada automaticamente na abertura do app.
 
-Os botões **Exportar dados** e **Importar dados** permitem transportar decks, cartões e histórico em um arquivo JSON local. A importação valida referências e faz merge por ID, sem apagar registros existentes.
+O botão de seed só é habilitado quando o app está em modo de desenvolvimento e `EXPO_PUBLIC_DEV_MODE=true`. O arquivo `.env.example` documenta a configuração local. O perfil EAS `development` ativa essa variável; `preview` e `production` a desativam.
+
+Na tela **Configurações**, os botões **Exportar dados** e **Importar dados** permitem transportar grupos, decks, cartões e histórico em um arquivo JSON local. A importação valida referências e faz merge por ID, sem apagar registros existentes.
 
 Casos de uso e repositories não devem depender diretamente da classe do SQLite. Essa fronteira permite criar posteriormente outro adaptador de persistência, inclusive para um banco relacional remoto ou MongoDB, sem alterar a interface da sessão de estudo.
 
@@ -142,7 +145,7 @@ Casos de uso e repositories não devem depender diretamente da classe do SQLite.
 - [x] Editar e excluir baralhos.
 - [x] Feedback visual por toast em ações de sucesso e erro.
 - [x] Seed manual de desenvolvimento para decks e cartões.
-- [ ] Reordenar baralhos por drag and drop, persistindo a ordem localmente.
+- [x] Criar, editar, excluir e organizar grupos e baralhos por drag and drop.
 - [x] Criar e listar flashcards dentro de um baralho.
 - [x] Editar e excluir flashcards.
 - [x] Implementar sessão de revisão.
@@ -157,7 +160,7 @@ Casos de uso e repositories não devem depender diretamente da classe do SQLite.
 - [x] Importação e exportação de dados em JSON.
 - [ ] Backup local.
 - [ ] Internacionalização da interface.
-- [ ] Avaliação de FSRS como alternativa de agendamento.
+- [x] Avaliação de FSRS como alternativa de agendamento.
 - [ ] Sincronização opcional, sem comprometer o núcleo offline.
 
 ## Qualidade e CI/CD
@@ -182,7 +185,17 @@ npm test -- --runInBand --coverage
 
 O GitHub Actions deverá executar essas verificações em pull requests e em pushes para `main`. Falhas de tipos, formatação, lint ou testes devem bloquear a integração.
 
-O workflow inicial está em `.github/workflows/ci.yml` e valida a documentação e a qualidade do aplicativo. A etapa de distribuição será adicionada quando houver uma plataforma de build definida, como EAS para Android e iOS.
+O workflow inicial está em `.github/workflows/ci.yml` e valida a documentação e a qualidade do aplicativo. A configuração de distribuição está em `eas.json`:
+
+```bash
+npx eas-cli login
+npx eas-cli init
+npx eas-cli build --profile development --platform android
+npx eas-cli build --profile preview --platform android
+npx eas-cli build --profile production --platform all
+```
+
+O perfil `development` gera um development client para testes internos. O perfil `preview` gera uma build instalável sem o seed. O perfil `production` gera a distribuição final e incrementa automaticamente a versão nativa. O `eas init` deve ser executado uma vez para associar o app ao projeto EAS da equipe.
 
 ## Desenvolvimento
 

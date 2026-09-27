@@ -32,8 +32,8 @@ describe("themes", () => {
 
     expect(darkTheme.mode).toBe("dark");
     expect(darkTheme.colors.background).toBe("#17131F");
-    expect(darkTheme.colors.primary).toBe("#B7A5FF");
-    expect(darkTheme.colors.accent).toBe("#F6C777");
+    expect(darkTheme.colors.primary).toBe("#AA98ED");
+    expect(darkTheme.colors.accent).toBe("#D6A861");
     expect(Object.keys(darkTheme.colors)).toEqual(
       expect.arrayContaining(Object.keys(lightTheme.colors)),
     );

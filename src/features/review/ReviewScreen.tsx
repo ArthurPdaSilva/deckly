@@ -10,43 +10,67 @@ import {
 } from "react-native";
 import { AnimatedScreen } from "../../components/AnimatedScreen";
 import { notify } from "../../components/notifications";
+import { useLanguage } from "../../styles/LanguageProvider";
 import { useTheme } from "../../styles/ThemeProvider";
 import type { Flashcard } from "../cards/domain/flashcard";
+import type { Deck } from "../decks/domain/deck";
+import type { DeckGroup } from "../decks/domain/deckGroup";
+import { createAlgorithmRepository } from "./algorithmRepository";
 import type { ReviewRating } from "./domain/scheduler";
 import { createReviewRepository } from "./repository";
-import { Sm2Scheduler } from "./sm2Scheduler";
+import { createScheduler } from "./schedulerFactory";
+import { formatCompactReviewInterval } from "./time";
 
 interface ReviewScreenProps {
+  deck?: Deck;
+  group?: DeckGroup;
   now?: Date;
   onBack: () => void;
 }
 
-export function ReviewScreen({ now = new Date(), onBack }: ReviewScreenProps) {
+export function ReviewScreen({
+  deck,
+  group,
+  now = new Date(),
+  onBack,
+}: ReviewScreenProps) {
   const database = useSQLiteContext();
   const { theme } = useTheme();
+  const { language, t } = useLanguage();
   const [sessionNow] = useState(() => now ?? new Date());
   const [cards, setCards] = useState<Flashcard[]>([]);
   const [totalCards, setTotalCards] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [showAnswer, setShowAnswer] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [algorithm, setAlgorithm] = useState<"sm-2" | "fsrs">("sm-2");
+  const deckId = deck?.id;
+  const groupId = group?.id;
 
   useEffect(() => {
     let mounted = true;
-    void createReviewRepository(database)
-      .findDueCards(sessionNow.toISOString())
-      .then((dueCards) => {
-        if (mounted) {
-          setCards(dueCards);
-          setTotalCards(dueCards.length);
-          setIsLoading(false);
-        }
-      });
+    const repository = createReviewRepository(database);
+    const cardsPromise = repository.findDueCards(
+      sessionNow.toISOString(),
+      deckId,
+      groupId,
+    );
+    void Promise.all([
+      cardsPromise,
+      createAlgorithmRepository(database).getActiveAlgorithm(),
+    ]).then(([dueCards, activeAlgorithm]) => {
+      if (mounted) {
+        setCards(dueCards);
+        setTotalCards(dueCards.length);
+        setAlgorithm(activeAlgorithm);
+        setIsLoading(false);
+      }
+    });
 
     return () => {
       mounted = false;
     };
-  }, [database, sessionNow]);
+  }, [database, deckId, groupId, sessionNow]);
 
   async function handleRate(rating: ReviewRating) {
     const card = cards[0];
@@ -56,12 +80,18 @@ export function ReviewScreen({ now = new Date(), onBack }: ReviewScreenProps) {
 
     setIsSaving(true);
     try {
-      const result = new Sm2Scheduler().schedule(
+      const result = createScheduler(algorithm).schedule(
         {
           dueAt: card.dueAt,
           intervalDays: card.intervalDays,
           easeFactor: card.easeFactor,
           repetitions: card.repetitions,
+          intervalMinutes: card.intervalMinutes,
+          schedulerAlgorithm: card.schedulerAlgorithm,
+          fsrsStability: card.fsrsStability,
+          fsrsDifficulty: card.fsrsDifficulty,
+          fsrsState: card.fsrsState,
+          fsrsLapses: card.fsrsLapses,
         },
         rating,
         sessionNow,
@@ -74,13 +104,9 @@ export function ReviewScreen({ now = new Date(), onBack }: ReviewScreenProps) {
       );
       setCards((currentCards) => currentCards.slice(1));
       setShowAnswer(false);
-      notify.success("Revisão registrada.");
+      notify.success(t("reviewRegistered"));
     } catch (cause) {
-      notify.error(
-        cause instanceof Error
-          ? cause.message
-          : "Não foi possível registrar a revisão",
-      );
+      notify.error(cause instanceof Error ? cause.message : t("reviewError"));
     } finally {
       setIsSaving(false);
     }
@@ -128,6 +154,11 @@ export function ReviewScreen({ now = new Date(), onBack }: ReviewScreenProps) {
     progressPercent: {
       color: theme.colors.primary,
       fontWeight: "800",
+    },
+    sessionEstimate: {
+      color: theme.colors.textMuted,
+      fontSize: theme.typography.bodySmall,
+      marginTop: theme.spacing.sm,
     },
     progressTrack: {
       backgroundColor: theme.colors.primaryMuted,
@@ -184,19 +215,30 @@ export function ReviewScreen({ now = new Date(), onBack }: ReviewScreenProps) {
     },
     ratings: {
       flexDirection: "row",
-      gap: theme.spacing.sm,
+      gap: 6,
       marginTop: theme.spacing.lg,
     },
     rating: {
       alignItems: "center",
-      backgroundColor: theme.colors.primary,
-      borderRadius: 14,
+      borderRadius: 12,
       flex: 1,
-      padding: theme.spacing.md,
+      minHeight: 58,
+      paddingHorizontal: 4,
+      paddingVertical: 7,
     },
     ratingLabel: {
-      color: theme.colors.onPrimary,
-      fontWeight: "700",
+      color: "#FFFFFF",
+      fontSize: 14,
+      fontWeight: "800",
+    },
+    ratingContent: {
+      alignItems: "center",
+      gap: theme.spacing.xs,
+    },
+    ratingInterval: {
+      color: "#FFFFFF",
+      fontSize: 13,
+      fontWeight: "600",
     },
     empty: {
       color: theme.colors.textSecondary,
@@ -212,26 +254,53 @@ export function ReviewScreen({ now = new Date(), onBack }: ReviewScreenProps) {
     loadingLabel: {
       color: theme.colors.textSecondary,
     },
-    summaryTitle: {
+    summaryCard: {
       backgroundColor: theme.colors.surfaceElevated,
       borderColor: theme.colors.primaryMuted,
       borderRadius: 22,
       borderWidth: 1,
       color: theme.colors.text,
-      fontSize: theme.typography.heading,
-      fontWeight: "700",
       marginTop: theme.spacing.xl,
       padding: theme.spacing.xl,
       textAlign: "center",
     },
+    summaryIcon: {
+      alignItems: "center",
+      backgroundColor: theme.colors.success,
+      borderRadius: 99,
+      height: 48,
+      justifyContent: "center",
+      alignSelf: "center",
+      width: 48,
+    },
+    summaryIconLabel: {
+      color: theme.colors.onPrimary,
+      fontSize: 24,
+      fontWeight: "800",
+    },
+    summaryTitle: {
+      color: theme.colors.text,
+      fontSize: theme.typography.heading,
+      fontWeight: "700",
+      marginTop: theme.spacing.md,
+      textAlign: "center",
+    },
     summaryText: {
-      backgroundColor: theme.colors.surfaceElevated,
       color: theme.colors.textSecondary,
       fontSize: theme.typography.body,
-      marginTop: -theme.spacing.xl,
-      paddingBottom: theme.spacing.xl,
-      paddingHorizontal: theme.spacing.xl,
+      marginTop: theme.spacing.sm,
       textAlign: "center",
+    },
+    summaryButton: {
+      alignItems: "center",
+      backgroundColor: theme.colors.primary,
+      borderRadius: 14,
+      marginTop: theme.spacing.lg,
+      padding: theme.spacing.md,
+    },
+    summaryButtonLabel: {
+      color: theme.colors.onPrimary,
+      fontWeight: "800",
     },
   });
 
@@ -244,29 +313,43 @@ export function ReviewScreen({ now = new Date(), onBack }: ReviewScreenProps) {
     <AnimatedScreen>
       <View style={styles.container}>
         <Pressable onPress={onBack}>
-          <Text style={styles.back}>← Voltar</Text>
+          <Text style={styles.back}>{t("back")}</Text>
         </Pressable>
         <View testID="review-content" style={styles.sessionContent}>
-          <Text style={styles.eyebrow}>SESSÃO DE HOJE</Text>
-          <Text style={styles.title}>Revisar</Text>
+          <Text style={styles.eyebrow}>
+            {deck
+              ? `REVISÃO • ${deck.name.toUpperCase()}`
+              : group
+                ? `GRUPO • ${group.name.toUpperCase()}`
+                : t("todaySession").toUpperCase()}
+          </Text>
+          <Text style={styles.title}>{t("review")}</Text>
           {isLoading ? (
             <View style={styles.loading}>
               <ActivityIndicator
                 color={theme.colors.primary}
                 testID="review-loading"
               />
-              <Text style={styles.loadingLabel}>Preparando sua sessão...</Text>
+              <Text style={styles.loadingLabel}>{t("reviewPreparing")}</Text>
             </View>
           ) : currentCard ? (
             <>
               <View style={styles.progressHeader}>
-                <Text
-                  style={styles.progress}
-                >{`Cartão ${reviewedCount + 1} de ${totalCards}`}</Text>
+                <Text style={styles.progress}>
+                  {t("cardProgress", {
+                    current: reviewedCount + 1,
+                    total: totalCards,
+                  })}
+                </Text>
                 <Text
                   style={styles.progressPercent}
                 >{`${progressPercent}%`}</Text>
               </View>
+              <Text style={styles.sessionEstimate}>
+                {t("estimatedTime", {
+                  minutes: Math.max(1, Math.ceil(cards.length * 0.5)),
+                })}
+              </Text>
               <View style={styles.progressTrack}>
                 <View
                   testID="review-progress-fill"
@@ -278,11 +361,11 @@ export function ReviewScreen({ now = new Date(), onBack }: ReviewScreenProps) {
               </View>
               <AnimatedReviewCard key={currentCard.id}>
                 <View style={styles.card}>
-                  <Text style={styles.label}>Frente</Text>
+                  <Text style={styles.label}>{t("front")}</Text>
                   <Text style={styles.content}>{currentCard.front}</Text>
                   {showAnswer ? (
                     <View style={styles.divider}>
-                      <Text style={styles.label}>Verso</Text>
+                      <Text style={styles.label}>{t("backSide")}</Text>
                       <Text style={styles.content}>{currentCard.back}</Text>
                     </View>
                   ) : (
@@ -293,52 +376,107 @@ export function ReviewScreen({ now = new Date(), onBack }: ReviewScreenProps) {
                         pressed && styles.controlPressed,
                       ]}
                     >
-                      <Text style={styles.revealLabel}>Mostrar resposta</Text>
+                      <Text style={styles.revealLabel}>{t("showAnswer")}</Text>
                     </Pressable>
                   )}
                   {showAnswer ? (
                     <View style={styles.ratings}>
-                      <Pressable
-                        onPress={() => void handleRate(2)}
-                        style={({ pressed }) => [
-                          styles.rating,
-                          pressed && styles.controlPressed,
-                        ]}
-                      >
-                        <Text style={styles.ratingLabel}>Difícil</Text>
-                      </Pressable>
-                      <Pressable
-                        onPress={() => void handleRate(4)}
-                        style={({ pressed }) => [
-                          styles.rating,
-                          pressed && styles.controlPressed,
-                        ]}
-                      >
-                        <Text style={styles.ratingLabel}>Bom</Text>
-                      </Pressable>
-                      <Pressable
-                        onPress={() => void handleRate(5)}
-                        style={({ pressed }) => [
-                          styles.rating,
-                          pressed && styles.controlPressed,
-                        ]}
-                      >
-                        <Text style={styles.ratingLabel}>Fácil</Text>
-                      </Pressable>
+                      {[
+                        {
+                          label: t("again"),
+                          rating: 2 as const,
+                          color: theme.colors.ratingAgain,
+                        },
+                        {
+                          label: t("hard"),
+                          rating: 3 as const,
+                          color: theme.colors.ratingHard,
+                        },
+                        {
+                          label: t("good"),
+                          rating: 4 as const,
+                          color: theme.colors.ratingGood,
+                        },
+                        {
+                          label: t("easy"),
+                          rating: 5 as const,
+                          color: theme.colors.ratingEasy,
+                        },
+                      ].map((option) => {
+                        const preview = createScheduler(algorithm).schedule(
+                          {
+                            dueAt: currentCard.dueAt,
+                            intervalDays: currentCard.intervalDays,
+                            easeFactor: currentCard.easeFactor,
+                            repetitions: currentCard.repetitions,
+                            intervalMinutes: currentCard.intervalMinutes,
+                            schedulerAlgorithm: currentCard.schedulerAlgorithm,
+                            fsrsStability: currentCard.fsrsStability,
+                            fsrsDifficulty: currentCard.fsrsDifficulty,
+                            fsrsState: currentCard.fsrsState,
+                            fsrsLapses: currentCard.fsrsLapses,
+                          },
+                          option.rating,
+                          sessionNow,
+                        );
+
+                        return (
+                          <Pressable
+                            key={option.label}
+                            onPress={() => void handleRate(option.rating)}
+                            style={({ pressed }) => [
+                              styles.rating,
+                              { backgroundColor: option.color },
+                              pressed && styles.controlPressed,
+                            ]}
+                          >
+                            <View style={styles.ratingContent}>
+                              <Text style={styles.ratingLabel}>
+                                {option.label}
+                              </Text>
+                              <Text style={styles.ratingInterval}>
+                                {formatCompactReviewInterval(
+                                  preview.nextState.intervalMinutes ??
+                                    preview.nextState.intervalDays * 1440,
+                                )}
+                              </Text>
+                            </View>
+                          </Pressable>
+                        );
+                      })}
                     </View>
                   ) : null}
                 </View>
               </AnimatedReviewCard>
             </>
           ) : totalCards > 0 ? (
-            <>
-              <Text style={styles.summaryTitle}>Sessão concluída</Text>
+            <View testID="review-completion-card" style={styles.summaryCard}>
+              <View style={styles.summaryIcon}>
+                <Text style={styles.summaryIconLabel}>✓</Text>
+              </View>
+              <Text style={styles.summaryTitle}>{t("completed")}</Text>
               <Text style={styles.summaryText}>
-                {`${totalCards} ${totalCards === 1 ? "cartão" : "cartões"} revisado${totalCards === 1 ? "" : "s"}.`}
+                {t("reviewedCards", {
+                  count: totalCards,
+                  label:
+                    language === "en"
+                      ? totalCards === 1
+                        ? "card"
+                        : "cards"
+                      : totalCards === 1
+                        ? "cartão"
+                        : "cartões",
+                  suffix: language === "en" ? "" : totalCards === 1 ? "" : "s",
+                })}
               </Text>
-            </>
+              <Pressable onPress={onBack} style={styles.summaryButton}>
+                <Text style={styles.summaryButtonLabel}>
+                  {t("backToDecksPlain")}
+                </Text>
+              </Pressable>
+            </View>
           ) : (
-            <Text style={styles.empty}>Tudo revisado por hoje.</Text>
+            <Text style={styles.empty}>{t("allReviewed")}</Text>
           )}
         </View>
       </View>

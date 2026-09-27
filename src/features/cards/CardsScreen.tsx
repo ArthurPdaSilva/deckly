@@ -1,42 +1,35 @@
 import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useState } from "react";
-import {
-  FlatList,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { AnimatedScreen } from "../../components/AnimatedScreen";
 import { notify } from "../../components/notifications";
+import { useLanguage } from "../../styles/LanguageProvider";
 import { useTheme } from "../../styles/ThemeProvider";
 import type { Deck } from "../decks/domain/deck";
 import type { Flashcard } from "./domain/flashcard";
 import { createFlashcardRepository } from "./repository";
-import {
-  createFlashcard,
-  deleteFlashcard,
-  listFlashcards,
-  updateFlashcard,
-} from "./useCases";
+import { deleteFlashcard, listFlashcards } from "./useCases";
 
 interface CardsScreenProps {
   deck: Deck;
   onBack: () => void;
+  onReview?: () => void;
+  onCreateCard?: () => void;
+  onEditCard?: (card: Flashcard) => void;
 }
 
-export function CardsScreen({ deck, onBack }: CardsScreenProps) {
+export function CardsScreen({
+  deck,
+  onBack,
+  onReview,
+  onCreateCard,
+  onEditCard,
+}: CardsScreenProps) {
   const database = useSQLiteContext();
   const { theme } = useTheme();
+  const { t } = useLanguage();
   const [cards, setCards] = useState<Flashcard[]>([]);
-  const [front, setFront] = useState("");
-  const [back, setBack] = useState("");
-  const [editingFront, setEditingFront] = useState("");
-  const [editingBack, setEditingBack] = useState("");
-  const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [editingCard, setEditingCard] = useState<Flashcard | null>(null);
   const [cardPendingDelete, setCardPendingDelete] = useState<Flashcard | null>(
     null,
   );
@@ -57,73 +50,6 @@ export function CardsScreen({ deck, onBack }: CardsScreenProps) {
     };
   }, [database, deck.id]);
 
-  async function handleSubmitCard() {
-    try {
-      const repository = createFlashcardRepository(database);
-      if (editingCard) {
-        const card = await updateFlashcard(
-          repository,
-          editingCard,
-          {
-            front: editingCard ? editingFront : front,
-            back: editingCard ? editingBack : back,
-          },
-          new Date(),
-        );
-        setCards((currentCards) =>
-          currentCards.map((currentCard) =>
-            currentCard.id === card.id ? card : currentCard,
-          ),
-        );
-        setEditingCard(null);
-        notify.success("Cartão atualizado.");
-      } else {
-        const card = await createFlashcard(
-          repository,
-          deck.id,
-          { front, back },
-          {
-            now: new Date(),
-            createId: () => `card-${Date.now()}`,
-          },
-        );
-        setCards((currentCards) => [...currentCards, card]);
-        notify.success("Cartão adicionado.");
-      }
-
-      setFront("");
-      setBack("");
-      setEditingFront("");
-      setEditingBack("");
-      setError(null);
-    } catch (cause) {
-      setError(
-        cause instanceof Error
-          ? cause.message
-          : "Não foi possível adicionar o cartão",
-      );
-      notify.error(
-        cause instanceof Error
-          ? cause.message
-          : "Não foi possível salvar o cartão",
-      );
-    }
-  }
-
-  function handleStartEdit(card: Flashcard) {
-    setEditingCard(card);
-    setEditingFront(card.front);
-    setEditingBack(card.back);
-    setError(null);
-  }
-
-  function handleCancelEdit() {
-    setEditingCard(null);
-    setEditingFront("");
-    setEditingBack("");
-    setError(null);
-  }
-
   async function handleConfirmDelete() {
     if (!cardPendingDelete) {
       return;
@@ -136,11 +62,8 @@ export function CardsScreen({ deck, onBack }: CardsScreenProps) {
     setCards((currentCards) =>
       currentCards.filter((card) => card.id !== cardPendingDelete.id),
     );
-    if (editingCard?.id === cardPendingDelete.id) {
-      handleCancelEdit();
-    }
     setCardPendingDelete(null);
-    notify.success("Cartão excluído.");
+    notify.success(t("delete"));
   }
 
   const styles = StyleSheet.create({
@@ -166,6 +89,13 @@ export function CardsScreen({ deck, onBack }: CardsScreenProps) {
       fontSize: 30,
       fontWeight: "700",
       marginTop: theme.spacing.xs,
+    },
+    reviewButton: {
+      alignItems: "center",
+      backgroundColor: theme.colors.primary,
+      borderRadius: 14,
+      marginTop: theme.spacing.md,
+      padding: theme.spacing.md,
     },
     input: {
       backgroundColor: theme.colors.surface,
@@ -334,61 +264,47 @@ export function CardsScreen({ deck, onBack }: CardsScreenProps) {
     <AnimatedScreen>
       <View style={styles.container}>
         <Pressable onPress={onBack}>
-          <Text style={styles.back}>← Voltar aos baralhos</Text>
+          <Text style={styles.back}>{t("backToDecks")}</Text>
         </Pressable>
-        <Text style={styles.eyebrow}>BARALHO</Text>
+        <Text style={styles.eyebrow}>{t("cards")}</Text>
         <Text style={styles.title}>{deck.name}</Text>
-        <TextInput
-          accessibilityLabel="Frente do cartão"
-          multiline
-          onChangeText={setFront}
-          placeholder="Frente do cartão"
-          placeholderTextColor={theme.colors.textSecondary}
-          style={styles.input}
-          value={front}
-        />
-        <TextInput
-          accessibilityLabel="Verso do cartão"
-          multiline
-          onChangeText={setBack}
-          placeholder="Verso do cartão"
-          placeholderTextColor={theme.colors.textSecondary}
-          style={styles.input}
-          value={back}
-        />
+        {onReview ? (
+          <Pressable onPress={onReview} style={styles.reviewButton}>
+            <Text style={styles.buttonLabel}>{t("reviewDeck")}</Text>
+          </Pressable>
+        ) : null}
         <Pressable
-          onPress={() => void handleSubmitCard()}
+          onPress={onCreateCard}
           style={({ pressed }) => [
             styles.button,
             pressed && styles.buttonPressed,
           ]}
         >
-          <Text style={styles.buttonLabel}>Adicionar cartão</Text>
+          <Text style={styles.buttonLabel}>{t("newCard")}</Text>
         </Pressable>
-        {error ? <Text style={styles.error}>{error}</Text> : null}
         {isLoading ? (
-          <Text style={styles.empty}>Carregando cartões...</Text>
+          <Text style={styles.empty}>{t("loadingCards")}</Text>
         ) : (
           <FlatList
             data={cards}
             keyExtractor={(card) => card.id}
             ListEmptyComponent={
-              <Text style={styles.empty}>Nenhum cartão criado ainda.</Text>
+              <Text style={styles.empty}>{t("noCardsCreated")}</Text>
             }
             renderItem={({ item }) => (
               <View style={styles.card}>
-                <Text style={styles.cardLabel}>Frente</Text>
+                <Text style={styles.cardLabel}>{t("front")}</Text>
                 <Text style={styles.cardText}>{item.front}</Text>
                 <View style={styles.cardBack}>
-                  <Text style={styles.cardLabel}>Verso</Text>
+                  <Text style={styles.cardLabel}>{t("backSide")}</Text>
                   <Text style={styles.cardText}>{item.back}</Text>
                 </View>
                 <View style={styles.cardActions}>
-                  <Pressable onPress={() => handleStartEdit(item)}>
-                    <Text style={styles.editAction}>Editar</Text>
+                  <Pressable onPress={() => onEditCard?.(item)}>
+                    <Text style={styles.editAction}>{t("edit")}</Text>
                   </Pressable>
                   <Pressable onPress={() => setCardPendingDelete(item)}>
-                    <Text style={styles.deleteAction}>Excluir</Text>
+                    <Text style={styles.deleteAction}>{t("delete")}</Text>
                   </Pressable>
                 </View>
               </View>
@@ -397,53 +313,14 @@ export function CardsScreen({ deck, onBack }: CardsScreenProps) {
         )}
         {cardPendingDelete ? (
           <View style={styles.confirmation}>
-            <Text style={styles.confirmationTitle}>Excluir este cartão?</Text>
-            <Text style={styles.confirmationText}>
-              O histórico futuro desse cartão também será removido.
-            </Text>
+            <Text style={styles.confirmationTitle}>{t("deleteCardTitle")}</Text>
+            <Text style={styles.confirmationText}>{t("deleteCardText")}</Text>
             <View style={styles.confirmationActions}>
               <Pressable onPress={() => setCardPendingDelete(null)}>
-                <Text style={styles.editAction}>Cancelar</Text>
+                <Text style={styles.editAction}>{t("cancel")}</Text>
               </Pressable>
               <Pressable onPress={() => void handleConfirmDelete()}>
-                <Text style={styles.deleteAction}>Confirmar exclusão</Text>
-              </Pressable>
-            </View>
-          </View>
-        ) : null}
-        {editingCard ? (
-          <View testID="card-editor" style={styles.editorPanel}>
-            <Text style={styles.editorTitle}>Editar cartão</Text>
-            <Text style={styles.editorHint}>
-              Ajuste o conteúdo sem alterar o agendamento deste cartão.
-            </Text>
-            <TextInput
-              accessibilityLabel="Frente para edição"
-              multiline
-              onChangeText={setEditingFront}
-              placeholder="Frente para edição"
-              placeholderTextColor={theme.colors.textSecondary}
-              style={styles.editorInput}
-              value={editingFront}
-            />
-            <TextInput
-              accessibilityLabel="Verso para edição"
-              multiline
-              onChangeText={setEditingBack}
-              placeholder="Verso para edição"
-              placeholderTextColor={theme.colors.textSecondary}
-              style={styles.editorInput}
-              value={editingBack}
-            />
-            <View style={styles.editorActions}>
-              <Pressable
-                onPress={() => void handleSubmitCard()}
-                style={styles.editorSave}
-              >
-                <Text style={styles.editorSaveLabel}>Salvar edição</Text>
-              </Pressable>
-              <Pressable onPress={handleCancelEdit} style={styles.editorCancel}>
-                <Text style={styles.editorCancelLabel}>Cancelar</Text>
+                <Text style={styles.deleteAction}>{t("confirmDelete")}</Text>
               </Pressable>
             </View>
           </View>

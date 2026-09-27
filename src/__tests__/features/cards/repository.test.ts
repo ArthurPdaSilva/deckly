@@ -63,7 +63,7 @@ describe("SQLite flashcard repository", () => {
     ]);
     expect(database.getAllAsync).toHaveBeenCalledWith(
       expect.stringContaining("WHERE deck_id = ?"),
-      "deck-1",
+      ["deck-1"],
     );
   });
 

@@ -2,11 +2,37 @@ export interface SeedDatabase {
   execAsync(sql: string): Promise<void>;
 }
 
+export const SEED_GROUPS = [
+  {
+    id: "seed-group-languages",
+    name: "Idiomas",
+    createdAt: "2026-01-01T09:00:00.000Z",
+    updatedAt: "2026-01-01T09:00:00.000Z",
+    sortOrder: 0,
+  },
+  {
+    id: "seed-group-engineering",
+    name: "Engenharia de software",
+    createdAt: "2026-01-01T09:05:00.000Z",
+    updatedAt: "2026-01-01T09:05:00.000Z",
+    sortOrder: 1,
+  },
+  {
+    id: "seed-group-knowledge",
+    name: "Conhecimentos gerais",
+    createdAt: "2026-01-01T09:10:00.000Z",
+    updatedAt: "2026-01-01T09:10:00.000Z",
+    sortOrder: 2,
+  },
+] as const;
+
 export const SEED_DECKS = [
   {
     id: "seed-english",
     name: "Inglês essencial",
     description: "Vocabulário para revisar todos os dias.",
+    groupId: "seed-group-languages",
+    sortOrder: 0,
     createdAt: "2026-01-01T10:00:00.000Z",
     updatedAt: "2026-01-01T10:00:00.000Z",
   },
@@ -14,6 +40,8 @@ export const SEED_DECKS = [
     id: "seed-learning",
     name: "Aprendizagem",
     description: "Conceitos sobre estudo e memória.",
+    groupId: "seed-group-knowledge",
+    sortOrder: 0,
     createdAt: "2026-01-02T10:00:00.000Z",
     updatedAt: "2026-01-02T10:00:00.000Z",
   },
@@ -21,6 +49,8 @@ export const SEED_DECKS = [
     id: "seed-programming",
     name: "Programação",
     description: "Fundamentos para revisar enquanto pratica.",
+    groupId: "seed-group-engineering",
+    sortOrder: 0,
     createdAt: "2026-01-03T10:00:00.000Z",
     updatedAt: "2026-01-03T10:00:00.000Z",
   },
@@ -28,6 +58,8 @@ export const SEED_DECKS = [
     id: "seed-spanish",
     name: "Espanhol para viagens",
     description: "Frases úteis para sair falando.",
+    groupId: "seed-group-languages",
+    sortOrder: 1,
     createdAt: "2026-01-04T10:00:00.000Z",
     updatedAt: "2026-01-04T10:00:00.000Z",
   },
@@ -35,6 +67,8 @@ export const SEED_DECKS = [
     id: "seed-science",
     name: "Ciência e curiosidades",
     description: "Perguntas rápidas para manter a curiosidade viva.",
+    groupId: "seed-group-knowledge",
+    sortOrder: 1,
     createdAt: "2026-01-05T10:00:00.000Z",
     updatedAt: "2026-01-05T10:00:00.000Z",
   },
@@ -42,8 +76,37 @@ export const SEED_DECKS = [
     id: "seed-interviews",
     name: "Entrevistas técnicas",
     description: "Revisão prática para conversas de tecnologia.",
+    groupId: "seed-group-engineering",
+    sortOrder: 1,
     createdAt: "2026-01-06T10:00:00.000Z",
     updatedAt: "2026-01-06T10:00:00.000Z",
+  },
+  {
+    id: "seed-french",
+    name: "Francês básico",
+    description: "Vocabulário inicial para viagens.",
+    groupId: "seed-group-languages",
+    sortOrder: 2,
+    createdAt: "2026-01-07T10:00:00.000Z",
+    updatedAt: "2026-01-07T10:00:00.000Z",
+  },
+  {
+    id: "seed-databases",
+    name: "Bancos de dados",
+    description: "SQL, modelagem e persistência.",
+    groupId: "seed-group-engineering",
+    sortOrder: 2,
+    createdAt: "2026-01-08T10:00:00.000Z",
+    updatedAt: "2026-01-08T10:00:00.000Z",
+  },
+  {
+    id: "seed-product",
+    name: "Produto e design",
+    description: "Conceitos para construir produtos melhores.",
+    groupId: null,
+    sortOrder: 0,
+    createdAt: "2026-01-09T10:00:00.000Z",
+    updatedAt: "2026-01-09T10:00:00.000Z",
   },
 ] as const;
 
@@ -124,6 +187,39 @@ const seedCardDefinitions = [
     "O que é desacoplamento?",
     "Reduzir dependências diretas entre partes do sistema.",
   ],
+  ["seed-french", "Bonjour", "Olá"],
+  ["seed-french", "Merci", "Obrigado(a)"],
+  ["seed-french", "Où est la gare?", "Onde fica a estação?"],
+  [
+    "seed-databases",
+    "O que é uma chave primária?",
+    "Um identificador único de uma linha.",
+  ],
+  [
+    "seed-databases",
+    "O que é um índice?",
+    "Uma estrutura que acelera consultas.",
+  ],
+  [
+    "seed-databases",
+    "O que é normalização?",
+    "Organizar dados para reduzir redundância.",
+  ],
+  [
+    "seed-product",
+    "O que é uma hipótese de produto?",
+    "Uma suposição testável sobre usuário e valor.",
+  ],
+  [
+    "seed-product",
+    "O que é acessibilidade?",
+    "Projetar para pessoas com diferentes capacidades.",
+  ],
+  [
+    "seed-product",
+    "O que é um MVP?",
+    "A menor versão que testa uma hipótese relevante.",
+  ],
 ] as const;
 
 export const SEED_CARDS = seedCardDefinitions.map(
@@ -155,11 +251,21 @@ function quote(value: string): string {
   return `'${value.replaceAll("'", "''")}'`;
 }
 
+function insertGroup(group: (typeof SEED_GROUPS)[number]): string {
+  return `INSERT INTO deck_groups (
+    id, name, created_at, updated_at, sort_order
+  ) VALUES (
+    ${quote(group.id)}, ${quote(group.name)}, ${quote(group.createdAt)},
+    ${quote(group.updatedAt)}, ${group.sortOrder}
+  )`;
+}
+
 function insertDeck(deck: (typeof SEED_DECKS)[number]): string {
   return `INSERT INTO decks (
-    id, name, description, created_at, updated_at
+    id, name, description, group_id, sort_order, created_at, updated_at
   ) VALUES (
     ${quote(deck.id)}, ${quote(deck.name)}, ${quote(deck.description)},
+    ${deck.groupId ? quote(deck.groupId) : "NULL"}, ${deck.sortOrder},
     ${quote(deck.createdAt)}, ${quote(deck.updatedAt)}
   )`;
 }
@@ -185,7 +291,11 @@ export async function resetAndSeedDatabase(
     await database.execAsync("DELETE FROM review_history");
     await database.execAsync("DELETE FROM cards");
     await database.execAsync("DELETE FROM decks");
+    await database.execAsync("DELETE FROM deck_groups");
 
+    for (const group of SEED_GROUPS) {
+      await database.execAsync(insertGroup(group));
+    }
     for (const deck of SEED_DECKS) {
       await database.execAsync(insertDeck(deck));
     }

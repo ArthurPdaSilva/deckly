@@ -12,6 +12,8 @@ interface DeckRow {
   description: string;
   created_at: string;
   updated_at: string;
+  group_id: string | null;
+  sort_order: number;
 }
 
 export function createDeckRepository(database: DeckDatabase): DeckRepository {
@@ -19,11 +21,13 @@ export function createDeckRepository(database: DeckDatabase): DeckRepository {
     async save(deck) {
       await database.runAsync(
         `INSERT INTO decks (
-          id, name, description, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?)`,
+          id, name, description, group_id, sort_order, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
         deck.id,
         deck.name,
         deck.description,
+        deck.groupId ?? null,
+        deck.sortOrder ?? 0,
         deck.createdAt,
         deck.updatedAt,
       );
@@ -31,9 +35,10 @@ export function createDeckRepository(database: DeckDatabase): DeckRepository {
 
     async findAll() {
       const rows = await database.getAllAsync<DeckRow>(
-        `SELECT id, name, description, created_at, updated_at
+        `SELECT id, name, description, group_id, sort_order,
+                created_at, updated_at
          FROM decks
-         ORDER BY updated_at DESC`,
+         ORDER BY sort_order ASC, updated_at DESC`,
       );
 
       return rows.map((row) => ({
@@ -42,16 +47,20 @@ export function createDeckRepository(database: DeckDatabase): DeckRepository {
         description: row.description,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
+        groupId: row.group_id,
+        sortOrder: row.sort_order,
       }));
     },
 
     async update(deck) {
       await database.runAsync(
         `UPDATE decks
-         SET name = ?, description = ?, updated_at = ?
+         SET name = ?, description = ?, group_id = ?, sort_order = ?, updated_at = ?
          WHERE id = ?`,
         deck.name,
         deck.description,
+        deck.groupId ?? null,
+        deck.sortOrder ?? 0,
         deck.updatedAt,
         deck.id,
       );

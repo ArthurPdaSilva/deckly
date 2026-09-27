@@ -10,6 +10,7 @@ jest.mock("expo-sqlite", () => ({
 describe("ReviewScreen", () => {
   it("reveals the answer and records an easy review", async () => {
     const database = {
+      getFirstAsync: jest.fn().mockResolvedValue(null),
       runAsync: jest.fn().mockResolvedValue(undefined),
       getAllAsync: jest.fn().mockResolvedValue([
         {
@@ -45,6 +46,8 @@ describe("ReviewScreen", () => {
     );
     expect(screen.queryByText("Olá")).toBeNull();
     fireEvent.press(screen.getByText("Mostrar resposta"));
+    expect(screen.getByText("1m")).toBeTruthy();
+    expect(screen.getAllByText("1d").length).toBe(3);
     expect(screen.getByText("Olá")).toBeTruthy();
     fireEvent.press(screen.getByText("Fácil"));
 
@@ -58,16 +61,59 @@ describe("ReviewScreen", () => {
         5,
         0,
         1,
+        0,
+        1440,
         "sm-2",
         "1",
       );
     });
     expect(screen.getByText("Sessão concluída")).toBeTruthy();
     expect(screen.getByText("1 cartão revisado.")).toBeTruthy();
+    expect(screen.getByTestId("review-completion-card")).toBeTruthy();
+    expect(screen.getByText("Voltar aos baralhos")).toBeTruthy();
+  });
+
+  it("previews the next interval for each rating", async () => {
+    const database = {
+      getFirstAsync: jest.fn().mockResolvedValue(null),
+      runAsync: jest.fn().mockResolvedValue(undefined),
+      getAllAsync: jest.fn().mockResolvedValue([
+        {
+          id: "card-1",
+          deck_id: "deck-1",
+          front: "Intervalo",
+          back: "Interval",
+          due_at: "2026-03-01T09:00:00.000Z",
+          interval_days: 10,
+          ease_factor: 2.5,
+          repetitions: 2,
+          created_at: "2026-02-01T10:00:00.000Z",
+          updated_at: "2026-02-01T10:00:00.000Z",
+        },
+      ]),
+    };
+    jest.mocked(useSQLiteContext).mockReturnValue(database as never);
+
+    const screen = render(
+      <ThemeProvider mode="light">
+        <ReviewScreen
+          onBack={jest.fn()}
+          now={new Date("2026-03-01T10:00:00.000Z")}
+        />
+      </ThemeProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByText("Intervalo")).toBeTruthy());
+    fireEvent.press(screen.getByText("Mostrar resposta"));
+
+    expect(screen.getByText("24d")).toBeTruthy();
+    expect(screen.getByText("25d")).toBeTruthy();
+    expect(screen.getByText("26d")).toBeTruthy();
   });
 
   it("shows the next card and advances the progress", async () => {
     const database = {
+      getFirstAsync: jest.fn().mockResolvedValue(null),
       runAsync: jest.fn().mockResolvedValue(undefined),
       getAllAsync: jest.fn().mockResolvedValue([
         {

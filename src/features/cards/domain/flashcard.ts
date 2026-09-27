@@ -7,6 +7,12 @@ export interface Flashcard {
   intervalDays: number;
   easeFactor: number;
   repetitions: number;
+  intervalMinutes?: number;
+  schedulerAlgorithm?: "sm-2" | "fsrs";
+  fsrsStability?: number;
+  fsrsDifficulty?: number;
+  fsrsState?: number;
+  fsrsLapses?: number;
   createdAt: string;
   updatedAt: string;
 }

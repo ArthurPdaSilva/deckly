@@ -68,7 +68,7 @@ describe("deck use cases", () => {
           createId: () => "deck-1",
         },
       ),
-    ).rejects.toThrow("Deck name cannot be empty");
+    ).rejects.toThrow("O nome do baralho não pode ficar vazio");
     expect(savedDecks).toEqual([]);
   });
 

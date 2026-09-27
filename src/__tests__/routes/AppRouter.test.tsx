@@ -8,7 +8,7 @@ jest.mock("expo-sqlite", () => ({
 }));
 
 describe("AppRouter", () => {
-  it("navigates to progress and returns to decks", async () => {
+  it("starts at home and navigates to progress and settings", async () => {
     const database = {
       getAllAsync: jest.fn().mockResolvedValue([]),
       getFirstAsync: jest.fn().mockResolvedValue({ count: 0, average: null }),
@@ -22,16 +22,19 @@ describe("AppRouter", () => {
       </ThemeProvider>,
     );
 
+    expect(screen.getByText("Início")).toBeTruthy();
+    fireEvent.press(screen.getByText("Meus baralhos"));
     await waitFor(() =>
-      expect(screen.getByText("Nenhum baralho criado ainda.")).toBeTruthy(),
+      expect(screen.getByText("Nenhum grupo criado ainda.")).toBeTruthy(),
     );
+    fireEvent.press(screen.getByText("← Voltar ao início"));
     fireEvent.press(screen.getByText("Ver progresso"));
     await waitFor(() => expect(screen.getByText("Seu progresso")).toBeTruthy());
 
     fireEvent.press(screen.getByText("← Voltar aos baralhos"));
-    await waitFor(() => {
-      expect(screen.getByText("Seus baralhos")).toBeTruthy();
-      expect(screen.getByText("Nenhum baralho criado ainda.")).toBeTruthy();
-    });
+    await waitFor(() => expect(screen.getByText("Início")).toBeTruthy());
+    expect(screen.getByText("Início")).toBeTruthy();
+    fireEvent.press(screen.getByText("Configurações"));
+    expect(screen.getByText("Configurações")).toBeTruthy();
   });
 });

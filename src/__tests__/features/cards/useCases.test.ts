@@ -75,7 +75,7 @@ describe("flashcard use cases", () => {
         { front: " ", back: "Answer" },
         options,
       ),
-    ).rejects.toThrow("Flashcard front cannot be empty");
+    ).rejects.toThrow("A frente do cartão não pode ficar vazia");
     await expect(
       createFlashcard(
         repository,
@@ -83,7 +83,7 @@ describe("flashcard use cases", () => {
         { front: "Question", back: " " },
         options,
       ),
-    ).rejects.toThrow("Flashcard back cannot be empty");
+    ).rejects.toThrow("O verso do cartão não pode ficar vazio");
     expect(savedCards).toEqual([]);
   });
 

@@ -3,7 +3,7 @@ import type { FlashcardRepository } from "./domain/flashcard";
 
 export interface FlashcardDatabase {
   runAsync(sql: string, ...params: SQLiteBindValue[]): Promise<unknown>;
-  getAllAsync<T>(sql: string, ...params: SQLiteBindValue[]): Promise<T[]>;
+  getAllAsync<T>(sql: string, params: SQLiteBindValue[]): Promise<T[]>;
 }
 
 interface FlashcardRow {
@@ -15,6 +15,12 @@ interface FlashcardRow {
   interval_days: number;
   ease_factor: number;
   repetitions: number;
+  interval_minutes: number;
+  scheduler_algorithm: "sm-2" | "fsrs";
+  fsrs_stability: number;
+  fsrs_difficulty: number;
+  fsrs_state: number;
+  fsrs_lapses: number;
   created_at: string;
   updated_at: string;
 }
@@ -45,11 +51,13 @@ export function createFlashcardRepository(
     async findByDeckId(deckId) {
       const rows = await database.getAllAsync<FlashcardRow>(
         `SELECT id, deck_id, front, back, due_at, interval_days,
-          ease_factor, repetitions, created_at, updated_at
+           ease_factor, repetitions, interval_minutes, scheduler_algorithm,
+           fsrs_stability, fsrs_difficulty, fsrs_state, fsrs_lapses,
+           created_at, updated_at
          FROM cards
          WHERE deck_id = ?
          ORDER BY created_at ASC`,
-        deckId,
+        [deckId],
       );
 
       return rows.map((row) => ({
@@ -59,8 +67,14 @@ export function createFlashcardRepository(
         back: row.back,
         dueAt: row.due_at,
         intervalDays: row.interval_days,
+        intervalMinutes: row.interval_minutes,
         easeFactor: row.ease_factor,
         repetitions: row.repetitions,
+        schedulerAlgorithm: row.scheduler_algorithm,
+        fsrsStability: row.fsrs_stability,
+        fsrsDifficulty: row.fsrs_difficulty,
+        fsrsState: row.fsrs_state,
+        fsrsLapses: row.fsrs_lapses,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
       }));

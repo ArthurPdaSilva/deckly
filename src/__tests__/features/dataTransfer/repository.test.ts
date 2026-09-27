@@ -7,6 +7,15 @@ describe("data transfer repository", () => {
         .fn()
         .mockResolvedValueOnce([
           {
+            id: "group-1",
+            name: "Idiomas",
+            created_at: "2026-01-01",
+            updated_at: "2026-01-01",
+            sort_order: 0,
+          },
+        ])
+        .mockResolvedValueOnce([
+          {
             id: "deck-1",
             name: "Inglês",
             description: "",
@@ -47,6 +56,7 @@ describe("data transfer repository", () => {
     const result = await createDataTransferRepository(database).exportData();
 
     expect(result.decks[0].name).toBe("Inglês");
+    expect(result.groups?.[0].name).toBe("Idiomas");
     expect(result.cards[0].deckId).toBe("deck-1");
     expect(result.reviews[0].cardId).toBe("card-1");
   });

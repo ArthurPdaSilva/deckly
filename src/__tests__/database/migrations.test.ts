@@ -47,10 +47,24 @@ describe("database migrations", () => {
   });
 
   it("does not execute anything when the schema is up to date", async () => {
-    const database = createDatabase(1);
+    const database = createDatabase(3);
 
     await runMigrations(database);
 
     expect(database.executed).toEqual([]);
+  });
+
+  it("adds nullable deck groups without changing existing deck ownership", () => {
+    const migration = getPendingMigrations(2).find(
+      (item) => item.version === 3,
+    );
+
+    expect(migration?.statements).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("CREATE TABLE IF NOT EXISTS deck_groups"),
+        expect.stringContaining("ALTER TABLE decks ADD COLUMN group_id"),
+        expect.stringContaining("ALTER TABLE decks ADD COLUMN sort_order"),
+      ]),
+    );
   });
 });

@@ -18,6 +18,10 @@ function addDays(date: Date, days: number): string {
   return nextDate.toISOString();
 }
 
+function addMinutes(date: Date, minutes: number): string {
+  return new Date(date.getTime() + minutes * 60_000).toISOString();
+}
+
 export class Sm2Scheduler implements Scheduler {
   schedule(
     state: ReviewState,
@@ -41,21 +45,29 @@ export class Sm2Scheduler implements Scheduler {
         : state.repetitions === 1
           ? 6
           : Math.max(1, Math.round(state.intervalDays * easeFactor))
-      : 1;
+      : 0;
+    const intervalMinutes = passed ? intervalDays * 1440 : 1;
     const reviewedAtIso = reviewedAt.toISOString();
 
     return {
       nextState: {
-        dueAt: addDays(reviewedAt, intervalDays),
+        dueAt: passed
+          ? addDays(reviewedAt, intervalDays)
+          : addMinutes(reviewedAt, intervalMinutes),
         intervalDays,
+        intervalMinutes,
         easeFactor,
         repetitions,
+        schedulerAlgorithm: ALGORITHM,
       },
       review: {
         reviewedAt: reviewedAtIso,
         rating,
         previousIntervalDays: state.intervalDays,
         nextIntervalDays: intervalDays,
+        previousIntervalMinutes:
+          state.intervalMinutes ?? state.intervalDays * 1440,
+        nextIntervalMinutes: intervalMinutes,
         algorithm: ALGORITHM,
         algorithmVersion: ALGORITHM_VERSION,
       },

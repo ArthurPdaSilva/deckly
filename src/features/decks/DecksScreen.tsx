@@ -1,52 +1,71 @@
-import * as DocumentPicker from "expo-document-picker";
-import * as FileSystem from "expo-file-system/legacy";
-import * as Sharing from "expo-sharing";
 import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useState } from "react";
-import {
-  FlatList,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { AnimatedScreen } from "../../components/AnimatedScreen";
 import { notify } from "../../components/notifications";
-import { resetAndSeedDatabase } from "../../database/seed";
 import type { AppRoute } from "../../routes/types";
+import { useLanguage } from "../../styles/LanguageProvider";
 import { useTheme } from "../../styles/ThemeProvider";
-import { parseExportData, serializeExportData } from "../dataTransfer/format";
-import { createDataTransferRepository } from "../dataTransfer/repository";
+import {
+  createReviewRepository,
+  type DeckReviewSummary,
+} from "../review/repository";
+import { formatTimeUntil } from "../review/time";
 import type { Deck } from "./domain/deck";
+import type { DeckGroup } from "./domain/deckGroup";
+import { createDeckGroupRepository } from "./groupRepository";
 import { createDeckRepository } from "./repository";
-import { createDeck, deleteDeck, listDecks, updateDeck } from "./useCases";
+import { deleteDeck, listDecks } from "./useCases";
 
 interface DecksScreenProps {
   onNavigate?: (route: AppRoute) => void;
+  onBack?: () => void;
+  groupId?: string | null;
 }
+
+type DeckListItem = { type: "deck"; deck: Deck };
 
 export function DecksScreen({
   onNavigate = () => undefined,
+  onBack,
+  groupId,
 }: DecksScreenProps) {
   const database = useSQLiteContext();
-  const { mode, theme, toggleTheme } = useTheme();
+  const { theme } = useTheme();
+  const { language, t } = useLanguage();
   const [decks, setDecks] = useState<Deck[]>([]);
-  const [name, setName] = useState("");
-  const [editingName, setEditingName] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [groups, setGroups] = useState<DeckGroup[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [editingDeck, setEditingDeck] = useState<Deck | null>(null);
   const [deckPendingDelete, setDeckPendingDelete] = useState<Deck | null>(null);
-  const [seedPending, setSeedPending] = useState(false);
+  const [reviewSummaries, setReviewSummaries] = useState<DeckReviewSummary[]>(
+    [],
+  );
 
   useEffect(() => {
     let mounted = true;
     const repository = createDeckRepository(database);
 
-    void listDecks(repository).then((loadedDecks) => {
+    void Promise.all([
+      listDecks(repository),
+      createDeckGroupRepository(database).findAll(),
+      createReviewRepository(database).findDeckSummaries(
+        new Date().toISOString(),
+      ),
+    ]).then(([loadedDecks, loadedGroups, summaries]) => {
       if (mounted) {
-        setDecks(loadedDecks);
+        setDecks(
+          groupId === undefined
+            ? loadedDecks
+            : loadedDecks.filter((deck) =>
+                groupId === null ? !deck.groupId : deck.groupId === groupId,
+              ),
+        );
+        setGroups(
+          loadedGroups
+            .filter((group) => Number.isFinite(group.sortOrder))
+            .filter((group) => groupId === undefined || group.id === groupId),
+        );
+        setReviewSummaries(summaries);
         setIsLoading(false);
       }
     });
@@ -54,67 +73,17 @@ export function DecksScreen({
     return () => {
       mounted = false;
     };
-  }, [database]);
+  }, [database, groupId]);
 
-  async function handleSubmitDeck() {
-    try {
-      const repository = createDeckRepository(database);
-
-      if (editingDeck) {
-        const deck = await updateDeck(
-          repository,
-          editingDeck,
-          { name: editingName },
-          new Date(),
-        );
-        setDecks((currentDecks) =>
-          currentDecks.map((currentDeck) =>
-            currentDeck.id === deck.id ? deck : currentDeck,
-          ),
-        );
-        setEditingDeck(null);
-        notify.success("Baralho atualizado.");
-      } else {
-        const deck = await createDeck(
-          repository,
-          { name },
-          {
-            now: new Date(),
-            createId: () => `deck-${Date.now()}`,
-          },
-        );
-        setDecks((currentDecks) => [deck, ...currentDecks]);
-        notify.success("Baralho criado.");
-      }
-
-      setName("");
-      setEditingName("");
-      setError(null);
-    } catch (cause) {
-      setError(
-        cause instanceof Error
-          ? cause.message
-          : "Não foi possível salvar o baralho",
-      );
-      notify.error(
-        cause instanceof Error
-          ? cause.message
-          : "Não foi possível salvar o baralho",
-      );
-    }
+  function getReviewSummary(deckId: string) {
+    return reviewSummaries.find((summary) => summary.deckId === deckId);
   }
 
-  function handleStartEdit(deck: Deck) {
-    setEditingDeck(deck);
-    setEditingName(deck.name);
-    setError(null);
-  }
-
-  function handleCancelEdit() {
-    setEditingDeck(null);
-    setEditingName("");
-    setError(null);
-  }
+  const listItems: DeckListItem[] = [
+    ...decks
+      .sort((first, second) => (first.sortOrder ?? 0) - (second.sortOrder ?? 0))
+      .map((deck) => ({ type: "deck" as const, deck })),
+  ];
 
   async function handleConfirmDelete() {
     if (!deckPendingDelete) {
@@ -127,83 +96,8 @@ export function DecksScreen({
       currentDecks.filter((deck) => deck.id !== deckPendingDelete.id),
     );
 
-    if (editingDeck?.id === deckPendingDelete.id) {
-      handleCancelEdit();
-    }
     setDeckPendingDelete(null);
-    notify.success("Baralho excluído.");
-  }
-
-  async function handleSeedDatabase() {
-    try {
-      await resetAndSeedDatabase(database);
-      const seededDecks = await listDecks(createDeckRepository(database));
-      setDecks(seededDecks);
-      notify.success("Dados de teste carregados.");
-    } catch (cause) {
-      notify.error(
-        cause instanceof Error
-          ? cause.message
-          : "Não foi possível carregar os dados de teste",
-      );
-    } finally {
-      setSeedPending(false);
-    }
-  }
-
-  async function handleExportData() {
-    try {
-      const data = await createDataTransferRepository(database).exportData();
-      const directory = FileSystem.documentDirectory;
-
-      if (!directory) {
-        throw new Error("Armazenamento local indisponível");
-      }
-
-      const uri = `${directory}deckly-export-${Date.now()}.json`;
-      await FileSystem.writeAsStringAsync(
-        uri,
-        serializeExportData(data, new Date().toISOString()),
-        { encoding: FileSystem.EncodingType.UTF8 },
-      );
-      await Sharing.shareAsync(uri, {
-        dialogTitle: "Exportar dados do Deckly",
-        mimeType: "application/json",
-      });
-      notify.success("Dados exportados.");
-    } catch (cause) {
-      notify.error(
-        cause instanceof Error
-          ? cause.message
-          : "Não foi possível exportar os dados",
-      );
-    }
-  }
-
-  async function handleImportData() {
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        copyToCacheDirectory: true,
-        type: "application/json",
-      });
-
-      if (result.canceled) {
-        return;
-      }
-
-      const content = await FileSystem.readAsStringAsync(result.assets[0].uri);
-      const data = parseExportData(content);
-      await createDataTransferRepository(database).importData(data);
-      const importedDecks = await listDecks(createDeckRepository(database));
-      setDecks(importedDecks);
-      notify.success("Dados importados.");
-    } catch (cause) {
-      notify.error(
-        cause instanceof Error
-          ? cause.message
-          : "Não foi possível importar os dados",
-      );
-    }
+    notify.success(t("delete"));
   }
 
   const styles = StyleSheet.create({
@@ -212,6 +106,11 @@ export function DecksScreen({
       flex: 1,
       padding: theme.spacing.lg,
       paddingTop: theme.spacing.xl,
+    },
+    back: {
+      color: theme.colors.primary,
+      fontWeight: "700",
+      marginBottom: theme.spacing.lg,
     },
     brandRow: {
       alignItems: "center",
@@ -242,20 +141,6 @@ export function DecksScreen({
       fontSize: theme.typography.body,
       lineHeight: 23,
       marginBottom: theme.spacing.lg,
-    },
-    themeButton: {
-      alignSelf: "flex-start",
-      borderColor: theme.colors.border,
-      borderRadius: 12,
-      borderWidth: 1,
-      marginBottom: theme.spacing.md,
-      paddingHorizontal: theme.spacing.md,
-      paddingVertical: theme.spacing.sm,
-    },
-    themeButtonLabel: {
-      color: theme.colors.textSecondary,
-      fontSize: theme.typography.bodySmall,
-      fontWeight: "700",
     },
     input: {
       backgroundColor: theme.colors.surface,
@@ -319,37 +204,6 @@ export function DecksScreen({
       color: theme.colors.textSecondary,
       fontWeight: "600",
     },
-    seedButton: {
-      alignItems: "center",
-      borderColor: theme.colors.accent,
-      borderRadius: 14,
-      borderWidth: 1,
-      marginTop: theme.spacing.lg,
-      padding: theme.spacing.sm,
-    },
-    seedButtonLabel: {
-      color: theme.colors.warning,
-      fontSize: theme.typography.bodySmall,
-      fontWeight: "700",
-    },
-    dataActions: {
-      flexDirection: "row",
-      gap: theme.spacing.sm,
-      marginTop: theme.spacing.md,
-    },
-    dataButton: {
-      borderColor: theme.colors.border,
-      borderRadius: 12,
-      borderWidth: 1,
-      flex: 1,
-      padding: theme.spacing.sm,
-    },
-    dataButtonLabel: {
-      color: theme.colors.textSecondary,
-      fontSize: theme.typography.bodySmall,
-      fontWeight: "700",
-      textAlign: "center",
-    },
     createButton: {
       alignItems: "center",
       backgroundColor: theme.colors.primary,
@@ -377,6 +231,19 @@ export function DecksScreen({
     reviewButtonLabel: {
       color: theme.colors.text,
       fontSize: theme.typography.body,
+      fontWeight: "800",
+    },
+    reviewGroupButton: {
+      alignItems: "center",
+      borderColor: theme.colors.primary,
+      borderRadius: 16,
+      borderWidth: 1,
+      justifyContent: "center",
+      marginTop: theme.spacing.sm,
+      minHeight: 48,
+    },
+    reviewGroupButtonLabel: {
+      color: theme.colors.primary,
       fontWeight: "800",
     },
     progressButton: {
@@ -419,6 +286,25 @@ export function DecksScreen({
       marginTop: theme.spacing.sm,
       padding: theme.spacing.lg,
     },
+    groupHeader: {
+      backgroundColor: theme.colors.primaryMuted,
+      borderRadius: 14,
+      marginTop: theme.spacing.lg,
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: theme.spacing.sm,
+    },
+    groupTitle: {
+      color: theme.colors.primary,
+      fontSize: theme.typography.bodySmall,
+      fontWeight: "800",
+      letterSpacing: 0.5,
+      textTransform: "uppercase",
+    },
+    dragHint: {
+      color: theme.colors.textMuted,
+      fontSize: theme.typography.bodySmall,
+      marginTop: theme.spacing.xs,
+    },
     deckPressed: {
       opacity: 0.86,
       transform: [{ scale: 0.99 }],
@@ -432,6 +318,11 @@ export function DecksScreen({
       color: theme.colors.textSecondary,
       marginTop: theme.spacing.xs,
     },
+    reviewSummary: {
+      color: theme.colors.textMuted,
+      fontSize: theme.typography.bodySmall,
+      marginTop: theme.spacing.sm,
+    },
     actionRow: {
       flexDirection: "row",
       gap: theme.spacing.lg,
@@ -439,6 +330,10 @@ export function DecksScreen({
     },
     editAction: {
       color: theme.colors.primary,
+      fontWeight: "700",
+    },
+    reviewAction: {
+      color: theme.colors.success,
       fontWeight: "700",
     },
     deleteAction: {
@@ -472,111 +367,104 @@ export function DecksScreen({
   return (
     <AnimatedScreen>
       <View style={styles.container}>
+        {onBack ? (
+          <Pressable onPress={onBack}>
+            <Text style={styles.back}>{t("backHome")}</Text>
+          </Pressable>
+        ) : null}
         <View style={styles.brandRow}>
           <View style={styles.brandDot} />
           <Text style={styles.eyebrow}>DECKLY</Text>
         </View>
-        <Text style={styles.title}>Seus baralhos</Text>
-        <Text style={styles.subtitle}>
-          Pequenas revisões. Memórias que ficam.
-        </Text>
-        <Pressable onPress={toggleTheme} style={styles.themeButton}>
-          <Text style={styles.themeButtonLabel}>
-            {mode === "dark" ? "Usar tema claro" : "Usar tema escuro"}
-          </Text>
-        </Pressable>
+        <Text style={styles.title}>{t("decks")}</Text>
+        <Text style={styles.subtitle}>{t("decksSubtitle")}</Text>
         <Pressable
-          onPress={() => onNavigate({ name: "review" })}
-          style={styles.reviewButton}
-        >
-          <Text style={styles.reviewButtonLabel}>Começar revisão</Text>
-        </Pressable>
-        <Pressable
-          onPress={() => onNavigate({ name: "statistics" })}
-          style={styles.progressButton}
-        >
-          <Text style={styles.progressButtonLabel}>Ver progresso</Text>
-        </Pressable>
-        <TextInput
-          accessibilityLabel="Nome do baralho"
-          onChangeText={setName}
-          placeholder="Nome do baralho"
-          placeholderTextColor={theme.colors.textSecondary}
-          style={styles.input}
-          value={name}
-        />
-        <Pressable
-          accessibilityLabel="Criar baralho"
+          accessibilityLabel={t("newDeck")}
           accessibilityRole="button"
-          onPress={() => void handleSubmitDeck()}
+          onPress={() => onNavigate({ name: "deckForm", groupId })}
           style={({ pressed }) => [
             styles.createButton,
             pressed && styles.createButtonPressed,
           ]}
         >
-          <Text style={styles.createButtonLabel}>Criar baralho</Text>
+          <Text style={styles.createButtonLabel}>{t("newDeck")}</Text>
         </Pressable>
-        {__DEV__ ? (
+        {groupId && groups.length > 0 ? (
           <Pressable
-            onPress={() => setSeedPending(true)}
-            style={styles.seedButton}
+            onPress={() => onNavigate({ name: "review", group: groups[0] })}
+            style={styles.reviewGroupButton}
           >
-            <Text style={styles.seedButtonLabel}>Carregar dados de teste</Text>
+            <Text style={styles.reviewGroupButtonLabel}>
+              {t("reviewGroup")}
+            </Text>
           </Pressable>
         ) : null}
-        <View style={styles.dataActions}>
-          <Pressable
-            onPress={() => void handleExportData()}
-            style={styles.dataButton}
-          >
-            <Text style={styles.dataButtonLabel}>Exportar dados</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => void handleImportData()}
-            style={styles.dataButton}
-          >
-            <Text style={styles.dataButtonLabel}>Importar dados</Text>
-          </Pressable>
-        </View>
-        {error ? <Text style={styles.error}>{error}</Text> : null}
         {isLoading ? (
-          <Text style={styles.empty}>Carregando baralhos...</Text>
+          <Text style={styles.empty}>{t("loadingDecks")}</Text>
         ) : (
-          <FlatList
-            data={decks}
-            keyExtractor={(deck) => deck.id}
+          <FlatList<DeckListItem>
+            data={listItems}
+            keyExtractor={(item) => item.deck.id}
             ListEmptyComponent={
-              <Text style={styles.empty}>Nenhum baralho criado ainda.</Text>
+              <Text style={styles.empty}>{t("noDecks")}</Text>
             }
             renderItem={({ item }) => (
               <Pressable
-                testID={`deck-${item.id}`}
-                onPress={() => onNavigate({ name: "cards", deck: item })}
+                testID={`deck-${item.deck.id}`}
+                onPress={() => onNavigate({ name: "cards", deck: item.deck })}
                 style={({ pressed }) => [
                   styles.deck,
                   pressed && styles.deckPressed,
                 ]}
               >
-                <Text style={styles.deckName}>{item.name}</Text>
-                {item.description ? (
-                  <Text style={styles.deckDescription}>{item.description}</Text>
+                <Text style={styles.deckName}>{item.deck.name}</Text>
+                {item.deck.description ? (
+                  <Text style={styles.deckDescription}>
+                    {item.deck.description}
+                  </Text>
                 ) : null}
+                <Text style={styles.reviewSummary}>
+                  {(() => {
+                    const summary = getReviewSummary(item.deck.id);
+                    if (!summary) return t("noCards");
+                    return t("nextReview", {
+                      count: summary.dueCount,
+                      time: summary.nextDueAt
+                        ? formatTimeUntil(
+                            summary.nextDueAt,
+                            new Date(),
+                            language,
+                          )
+                        : language === "en"
+                          ? "no date"
+                          : "sem data",
+                    });
+                  })()}
+                </Text>
                 <View style={styles.actionRow}>
                   <Pressable
                     onPress={(event) => {
                       event?.stopPropagation?.();
-                      handleStartEdit(item);
+                      onNavigate({ name: "review", deck: item.deck });
                     }}
                   >
-                    <Text style={styles.editAction}>Editar</Text>
+                    <Text style={styles.reviewAction}>{t("review")}</Text>
                   </Pressable>
                   <Pressable
                     onPress={(event) => {
                       event?.stopPropagation?.();
-                      setDeckPendingDelete(item);
+                      onNavigate({ name: "deckForm", deck: item.deck });
                     }}
                   >
-                    <Text style={styles.deleteAction}>Excluir</Text>
+                    <Text style={styles.editAction}>{t("edit")}</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={(event) => {
+                      event?.stopPropagation?.();
+                      setDeckPendingDelete(item.deck);
+                    }}
+                  >
+                    <Text style={styles.deleteAction}>{t("delete")}</Text>
                   </Pressable>
                 </View>
               </Pressable>
@@ -585,62 +473,14 @@ export function DecksScreen({
         )}
         {deckPendingDelete ? (
           <View style={styles.confirmation}>
-            <Text style={styles.confirmationTitle}>Excluir este baralho?</Text>
-            <Text style={styles.confirmationText}>
-              Os cartões desse baralho também serão removidos.
-            </Text>
+            <Text style={styles.confirmationTitle}>{t("deleteDeckTitle")}</Text>
+            <Text style={styles.confirmationText}>{t("deleteDeckText")}</Text>
             <View style={styles.confirmationActions}>
               <Pressable onPress={() => setDeckPendingDelete(null)}>
-                <Text style={styles.editAction}>Cancelar</Text>
+                <Text style={styles.editAction}>{t("cancel")}</Text>
               </Pressable>
               <Pressable onPress={() => void handleConfirmDelete()}>
-                <Text style={styles.deleteAction}>Confirmar exclusão</Text>
-              </Pressable>
-            </View>
-          </View>
-        ) : null}
-        {editingDeck ? (
-          <View testID="deck-editor" style={styles.editorPanel}>
-            <Text style={styles.editorTitle}>Editar baralho</Text>
-            <Text style={styles.editorHint}>
-              Atualize o nome sem perder seus cartões.
-            </Text>
-            <TextInput
-              accessibilityLabel="Nome para edição"
-              onChangeText={setEditingName}
-              placeholder="Nome para edição"
-              placeholderTextColor={theme.colors.textSecondary}
-              style={styles.editorInput}
-              value={editingName}
-            />
-            <View style={styles.editorActions}>
-              <Pressable
-                onPress={() => void handleSubmitDeck()}
-                style={styles.editorSave}
-              >
-                <Text style={styles.editorSaveLabel}>Salvar alterações</Text>
-              </Pressable>
-              <Pressable onPress={handleCancelEdit} style={styles.editorCancel}>
-                <Text style={styles.editorCancelLabel}>Cancelar</Text>
-              </Pressable>
-            </View>
-          </View>
-        ) : null}
-        {seedPending ? (
-          <View style={styles.confirmation}>
-            <Text style={styles.confirmationTitle}>
-              Substituir dados locais?
-            </Text>
-            <Text style={styles.confirmationText}>
-              Todos os decks e cartões atuais serão apagados e substituídos pela
-              seed.
-            </Text>
-            <View style={styles.confirmationActions}>
-              <Pressable onPress={() => setSeedPending(false)}>
-                <Text style={styles.editAction}>Cancelar</Text>
-              </Pressable>
-              <Pressable onPress={() => void handleSeedDatabase()}>
-                <Text style={styles.deleteAction}>Confirmar reset</Text>
+                <Text style={styles.deleteAction}>{t("confirmDelete")}</Text>
               </Pressable>
             </View>
           </View>

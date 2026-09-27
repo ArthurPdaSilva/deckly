@@ -2,6 +2,7 @@ import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { AnimatedScreen } from "../../components/AnimatedScreen";
+import { useLanguage } from "../../styles/LanguageProvider";
 import { useTheme } from "../../styles/ThemeProvider";
 import type { DashboardStats } from "./domain/statistics";
 import { createStatisticsRepository } from "./repository";
@@ -26,6 +27,7 @@ export function StatisticsScreen({
 }: StatisticsScreenProps) {
   const database = useSQLiteContext();
   const { mode, theme, toggleTheme } = useTheme();
+  const { t } = useLanguage();
   const [sessionNow] = useState(() => now ?? new Date());
   const [stats, setStats] = useState<DashboardStats>(EMPTY_STATS);
   const [isLoading, setIsLoading] = useState(true);
@@ -191,59 +193,57 @@ export function StatisticsScreen({
         style={styles.container}
       >
         <Pressable onPress={onBack}>
-          <Text style={styles.back}>← Voltar aos baralhos</Text>
+          <Text style={styles.back}>{t("backToDecks")}</Text>
         </Pressable>
-        <Text style={styles.eyebrow}>VISÃO GERAL</Text>
-        <Text style={styles.title}>Seu progresso</Text>
-        <Text style={styles.subtitle}>
-          Acompanhe o ritmo das suas revisões neste dispositivo.
-        </Text>
+        <Text style={styles.eyebrow}>{t("overview")}</Text>
+        <Text style={styles.title}>{t("statistics")}</Text>
+        <Text style={styles.subtitle}>{t("progressSubtitle")}</Text>
         <Pressable onPress={toggleTheme} style={styles.themeButton}>
           <Text style={styles.themeButtonLabel}>
-            {mode === "dark" ? "Usar tema claro" : "Usar tema escuro"}
+            {mode === "dark" ? t("useLight") : t("useDark")}
           </Text>
         </Pressable>
         {isLoading ? (
-          <Text style={styles.loading}>Calculando seu progresso...</Text>
+          <Text style={styles.loading}>{t("calculating")}</Text>
         ) : error ? (
-          <Text style={styles.error}>
-            Não foi possível carregar seu progresso.
-          </Text>
+          <Text style={styles.error}>{t("loadProgressError")}</Text>
         ) : (
           <>
             <View style={styles.grid}>
               <View style={styles.metric}>
                 <Text style={styles.metricValue}>{stats.totalCards}</Text>
-                <Text style={styles.metricLabel}>cartões criados</Text>
+                <Text style={styles.metricLabel}>{t("cardsCreated")}</Text>
               </View>
               <View style={styles.metric}>
                 <Text style={styles.metricValue}>{stats.dueCards}</Text>
-                <Text style={styles.metricLabel}>para revisar</Text>
+                <Text style={styles.metricLabel}>{t("dueCards")}</Text>
               </View>
               <View style={styles.metric}>
                 <Text style={styles.metricValue}>
                   {stats.averageRating.toFixed(1)}
                 </Text>
-                <Text style={styles.metricLabel}>média das avaliações</Text>
+                <Text style={styles.metricLabel}>{t("averageRating")}</Text>
               </View>
               <View style={styles.metric}>
                 <Text style={styles.metricValue}>{stats.totalDecks}</Text>
-                <Text style={styles.metricLabel}>baralhos</Text>
+                <Text style={styles.metricLabel}>{t("decksCount")}</Text>
               </View>
             </View>
             <View style={styles.panel}>
               <Text style={styles.panelTitle}>
-                {stats.reviewsToday} revisões hoje
+                {t("reviewsToday", { count: stats.reviewsToday })}
               </Text>
-              <Text style={styles.panelHint}>
-                Como você avaliou suas respostas
-              </Text>
+              <Text style={styles.panelHint}>{t("ratingQuestion")}</Text>
               {([2, 4, 5] as const).map((rating) => {
                 const count = stats.ratingDistribution[rating];
                 const width =
                   totalRatings === 0 ? 0 : (count / totalRatings) * 100;
                 const label =
-                  rating === 2 ? "Difícil" : rating === 4 ? "Bom" : "Fácil";
+                  rating === 2
+                    ? t("difficult")
+                    : rating === 4
+                      ? t("good")
+                      : t("easy");
 
                 return (
                   <View key={rating} style={styles.ratingRow}>

@@ -8,11 +8,22 @@ export interface ExportReview {
   rating: number;
   previousIntervalDays: number;
   nextIntervalDays: number;
+  previousIntervalMinutes?: number;
+  nextIntervalMinutes?: number;
   algorithm: string;
   algorithmVersion: string;
 }
 
+export interface ExportGroup {
+  id: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+  sortOrder: number;
+}
+
 export interface ExportCollections {
+  groups?: ExportGroup[];
   decks: Deck[];
   cards: Flashcard[];
   reviews: ExportReview[];
@@ -47,6 +58,17 @@ function isDeck(value: unknown): value is Deck {
   );
 }
 
+function isGroup(value: unknown): value is ExportGroup {
+  return (
+    isObject(value) &&
+    hasString(value, "id") &&
+    hasString(value, "name") &&
+    hasString(value, "createdAt") &&
+    hasString(value, "updatedAt") &&
+    hasNumber(value, "sortOrder")
+  );
+}
+
 function isCard(value: unknown): value is Flashcard {
   return (
     isObject(value) &&
@@ -72,6 +94,10 @@ function isReview(value: unknown): value is ExportReview {
     hasNumber(value, "rating") &&
     hasNumber(value, "previousIntervalDays") &&
     hasNumber(value, "nextIntervalDays") &&
+    (value.previousIntervalMinutes === undefined ||
+      hasNumber(value, "previousIntervalMinutes")) &&
+    (value.nextIntervalMinutes === undefined ||
+      hasNumber(value, "nextIntervalMinutes")) &&
     hasString(value, "algorithm") &&
     hasString(value, "algorithmVersion")
   );
@@ -105,6 +131,8 @@ export function parseExportData(input: string): DecklyExport {
     value.format !== "deckly" ||
     value.version !== 1 ||
     !hasString(value, "exportedAt") ||
+    (value.groups !== undefined &&
+      (!Array.isArray(value.groups) || !value.groups.every(isGroup))) ||
     !Array.isArray(value.decks) ||
     !Array.isArray(value.cards) ||
     !Array.isArray(value.reviews) ||
@@ -116,6 +144,10 @@ export function parseExportData(input: string): DecklyExport {
   }
 
   const deckIds = new Set(value.decks.map((deck) => deck.id));
+  const groupIds = new Set((value.groups ?? []).map((group) => group.id));
+  if (value.decks.some((deck) => deck.groupId && !groupIds.has(deck.groupId))) {
+    throw new Error("Arquivo Deckly contém baralho com grupo inexistente");
+  }
   if (value.cards.some((card) => !deckIds.has(card.deckId))) {
     throw new Error("Arquivo Deckly contém cartão com baralho inexistente");
   }

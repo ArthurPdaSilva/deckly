@@ -47,7 +47,24 @@ describe("SQLite review repository", () => {
     ]);
     expect(database.getAllAsync).toHaveBeenCalledWith(
       expect.stringContaining("WHERE due_at <= ?"),
+      ["2026-03-01T10:00:00.000Z"],
+    );
+  });
+
+  it("filters due cards by deck when requested", async () => {
+    const database = {
+      runAsync: jest.fn(),
+      getAllAsync: jest.fn().mockResolvedValue([]),
+    };
+
+    await createReviewRepository(database).findDueCards(
       "2026-03-01T10:00:00.000Z",
+      "deck-1",
+    );
+
+    expect(database.getAllAsync).toHaveBeenCalledWith(
+      expect.stringContaining("AND deck_id = ?"),
+      ["2026-03-01T10:00:00.000Z", "deck-1"],
     );
   });
 
@@ -66,8 +83,14 @@ describe("SQLite review repository", () => {
       expect.stringContaining("UPDATE cards"),
       reviewState.dueAt,
       reviewState.intervalDays,
+      1440,
       reviewState.easeFactor,
       reviewState.repetitions,
+      "sm-2",
+      0,
+      0,
+      0,
+      0,
       review.reviewedAt,
       "card-1",
     );
@@ -80,9 +103,49 @@ describe("SQLite review repository", () => {
       review.rating,
       review.previousIntervalDays,
       review.nextIntervalDays,
+      0,
+      1440,
       review.algorithm,
       review.algorithmVersion,
     );
     expect(database.runAsync).toHaveBeenNthCalledWith(4, "COMMIT");
+  });
+
+  it("finds due cards from every deck in a group", async () => {
+    const database = {
+      runAsync: jest.fn(),
+      getAllAsync: jest.fn().mockResolvedValue([
+        {
+          id: "card-1",
+          deck_id: "deck-1",
+          front: "Hello",
+          back: "Olá",
+          due_at: "2026-03-01T10:00:00.000Z",
+          interval_days: 0,
+          interval_minutes: 0,
+          ease_factor: 2.5,
+          repetitions: 0,
+          scheduler_algorithm: "sm-2",
+          fsrs_stability: 0,
+          fsrs_difficulty: 0,
+          fsrs_state: 0,
+          fsrs_lapses: 0,
+          created_at: "2026-01-01",
+          updated_at: "2026-01-01",
+        },
+      ]),
+    };
+
+    const cards = await createReviewRepository(database).findDueCards(
+      "2026-03-02T10:00:00.000Z",
+      undefined,
+      "group-1",
+    );
+
+    expect(cards).toHaveLength(1);
+    expect(database.getAllAsync).toHaveBeenCalledWith(
+      expect.stringContaining("d.group_id = ?"),
+      ["2026-03-02T10:00:00.000Z", "group-1"],
+    );
   });
 });

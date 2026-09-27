@@ -49,6 +49,33 @@ export const MIGRATIONS: readonly DatabaseMigration[] = [
       )`,
     ],
   },
+  {
+    version: 2,
+    statements: [
+      "ALTER TABLE cards ADD COLUMN interval_minutes INTEGER NOT NULL DEFAULT 0",
+      "ALTER TABLE cards ADD COLUMN scheduler_algorithm TEXT NOT NULL DEFAULT 'sm-2'",
+      "ALTER TABLE cards ADD COLUMN fsrs_stability REAL NOT NULL DEFAULT 0",
+      "ALTER TABLE cards ADD COLUMN fsrs_difficulty REAL NOT NULL DEFAULT 0",
+      "ALTER TABLE cards ADD COLUMN fsrs_state INTEGER NOT NULL DEFAULT 0",
+      "ALTER TABLE cards ADD COLUMN fsrs_lapses INTEGER NOT NULL DEFAULT 0",
+      "ALTER TABLE review_history ADD COLUMN previous_interval_minutes INTEGER NOT NULL DEFAULT 0",
+      "ALTER TABLE review_history ADD COLUMN next_interval_minutes INTEGER NOT NULL DEFAULT 0",
+    ],
+  },
+  {
+    version: 3,
+    statements: [
+      `CREATE TABLE IF NOT EXISTS deck_groups (
+        id TEXT PRIMARY KEY NOT NULL,
+        name TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        sort_order INTEGER NOT NULL DEFAULT 0
+      )`,
+      "ALTER TABLE decks ADD COLUMN group_id TEXT REFERENCES deck_groups (id) ON DELETE SET NULL",
+      "ALTER TABLE decks ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0",
+    ],
+  },
 ];
 
 export function getPendingMigrations(

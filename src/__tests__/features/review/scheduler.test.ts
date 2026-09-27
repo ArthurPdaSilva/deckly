@@ -21,14 +21,18 @@ describe("SM-2 scheduler", () => {
     expect(result.nextState).toEqual({
       dueAt: "2026-03-02T10:00:00.000Z",
       intervalDays: 1,
+      intervalMinutes: 1440,
       easeFactor: 2.6,
       repetitions: 1,
+      schedulerAlgorithm: "sm-2",
     });
     expect(result.review).toEqual({
       reviewedAt: "2026-03-01T10:00:00.000Z",
       rating: 5,
       previousIntervalDays: 0,
       nextIntervalDays: 1,
+      previousIntervalMinutes: 0,
+      nextIntervalMinutes: 1440,
       algorithm: "sm-2",
       algorithmVersion: "1",
     });
@@ -53,8 +57,10 @@ describe("SM-2 scheduler", () => {
     expect(result.nextState).toEqual({
       dueAt: "2026-03-08T10:00:00.000Z",
       intervalDays: 6,
+      intervalMinutes: 8640,
       easeFactor: 2.6,
       repetitions: 2,
+      schedulerAlgorithm: "sm-2",
     });
   });
 
@@ -75,10 +81,12 @@ describe("SM-2 scheduler", () => {
     );
 
     expect(result.nextState).toEqual({
-      dueAt: "2026-03-11T10:00:00.000Z",
-      intervalDays: 1,
+      dueAt: "2026-03-10T10:01:00.000Z",
+      intervalDays: 0,
+      intervalMinutes: 1,
       easeFactor: 2.18,
       repetitions: 0,
+      schedulerAlgorithm: "sm-2",
     });
   });
 });

@@ -13,7 +13,7 @@ export async function createDeck(
   const name = input.name.trim();
 
   if (!name) {
-    throw new Error("Deck name cannot be empty");
+    throw new Error("O nome do baralho não pode ficar vazio");
   }
 
   const timestamp = options.now.toISOString();
@@ -23,6 +23,8 @@ export async function createDeck(
     description: input.description?.trim() ?? "",
     createdAt: timestamp,
     updatedAt: timestamp,
+    ...(input.groupId !== undefined ? { groupId: input.groupId } : {}),
+    ...(input.sortOrder !== undefined ? { sortOrder: input.sortOrder } : {}),
   };
 
   await repository.save(deck);
@@ -42,7 +44,7 @@ export async function updateDeck(
   const name = input.name.trim();
 
   if (!name) {
-    throw new Error("Deck name cannot be empty");
+    throw new Error("O nome do baralho não pode ficar vazio");
   }
 
   const deck: Deck = {

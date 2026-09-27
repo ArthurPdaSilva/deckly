@@ -15,6 +15,10 @@ export interface ThemeColors {
   danger: string;
   success: string;
   warning: string;
+  ratingAgain: string;
+  ratingHard: string;
+  ratingGood: string;
+  ratingEasy: string;
 }
 
 export interface ThemeSpacing {
@@ -71,6 +75,10 @@ const lightTheme: Theme = {
     danger: "#C94C5B",
     success: "#3B9B7A",
     warning: "#C88632",
+    ratingAgain: "#C96F7A",
+    ratingHard: "#C48A52",
+    ratingGood: "#6FA681",
+    ratingEasy: "#6E9CC2",
   },
   spacing,
   typography,
@@ -81,18 +89,22 @@ const darkTheme: Theme = {
   colors: {
     background: "#17131F",
     surface: "#241D31",
-    surfaceElevated: "#302641",
-    text: "#FFF8F1",
-    textSecondary: "#C9BFD1",
-    textMuted: "#95889E",
-    primary: "#B7A5FF",
-    primaryMuted: "#3A2E5A",
-    accent: "#F6C777",
-    onPrimary: "#241D31",
+    surfaceElevated: "#2B2338",
+    text: "#F1EAE4",
+    textSecondary: "#C2B8C9",
+    textMuted: "#93889C",
+    primary: "#AA98ED",
+    primaryMuted: "#392F54",
+    accent: "#D6A861",
+    onPrimary: "#211A2B",
     border: "#463A52",
     danger: "#FF8E9A",
     success: "#6BD1A8",
-    warning: "#F4C86A",
+    warning: "#D9B06C",
+    ratingAgain: "#B95F72",
+    ratingHard: "#C18A4C",
+    ratingGood: "#6CA978",
+    ratingEasy: "#5C91BC",
   },
   spacing,
   typography,

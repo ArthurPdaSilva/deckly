@@ -6,15 +6,27 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "android": {
+      "package": "com.deckly.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#17131F"
       }
     },
+    "ios": {
+      "bundleIdentifier": "com.deckly.app"
+    },
     "web": {
       "favicon": "./assets/icon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "8fd9e8e1-6d85-4add-90f1-38cc8df0b00e"
+      }
+    },
+    "owner": "arthurpsilva"
   }
 }

@@ -2,15 +2,18 @@ import {
   resetAndSeedDatabase,
   SEED_CARDS,
   SEED_DECKS,
+  SEED_GROUPS,
 } from "../../database/seed";
 
 describe("development database seed", () => {
   it("contains several decks and enough unique cards for manual testing", () => {
     expect(SEED_DECKS.length).toBeGreaterThanOrEqual(5);
+    expect(SEED_GROUPS.length).toBeGreaterThanOrEqual(3);
     expect(SEED_CARDS.length).toBeGreaterThanOrEqual(20);
     expect(new Set(SEED_DECKS.map((deck) => deck.id)).size).toBe(
       SEED_DECKS.length,
     );
+    expect(SEED_DECKS.some((deck) => deck.groupId === null)).toBe(true);
     expect(new Set(SEED_CARDS.map((card) => card.id)).size).toBe(
       SEED_CARDS.length,
     );
@@ -35,8 +38,12 @@ describe("development database seed", () => {
     expect(database.executed).toContain("DELETE FROM review_history");
     expect(database.executed).toContain("DELETE FROM cards");
     expect(database.executed).toContain("DELETE FROM decks");
+    expect(database.executed).toContain("DELETE FROM deck_groups");
     expect(database.executed).toContainEqual(
       expect.stringContaining(SEED_DECKS[0].id),
+    );
+    expect(database.executed).toContainEqual(
+      expect.stringContaining(SEED_GROUPS[0].id),
     );
     expect(database.executed).toContainEqual(
       expect.stringContaining(SEED_CARDS[0].id),

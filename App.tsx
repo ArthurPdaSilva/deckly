@@ -5,6 +5,7 @@ import {
   initializeDatabase,
 } from "./src/database/client";
 import { AppRouter } from "./src/routes/AppRouter";
+import { LanguageProvider } from "./src/styles/LanguageProvider";
 import { ThemeProvider } from "./src/styles/ThemeProvider";
 
 export function App() {
@@ -19,9 +20,11 @@ function AppContent() {
   const database = useSQLiteContext();
 
   return (
-    <ThemeProvider database={database}>
-      <AppRouter />
-      <ToastHost />
-    </ThemeProvider>
+    <LanguageProvider database={database}>
+      <ThemeProvider database={database}>
+        <AppRouter />
+        <ToastHost />
+      </ThemeProvider>
+    </LanguageProvider>
   );
 }
