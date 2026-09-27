@@ -1,13 +1,16 @@
 import {
   NavigationContainer,
   type NavigationProp,
+  useFocusEffect,
 } from "@react-navigation/native";
 import {
   createNativeStackNavigator,
   type NativeStackScreenProps,
 } from "@react-navigation/native-stack";
+import { useCallback, useState } from "react";
 import { CardFormScreen } from "../features/cards/CardFormScreen";
 import { CardsScreen } from "../features/cards/CardsScreen";
+import { MoveCardScreen } from "../features/cards/MoveCardScreen";
 import { DeckFormScreen } from "../features/decks/DeckFormScreen";
 import { DecksScreen } from "../features/decks/DecksScreen";
 import { GroupFormScreen } from "../features/decks/GroupFormScreen";
@@ -50,6 +53,9 @@ function navigateFromAppRoute(navigation: Navigation, route: AppRoute): void {
         deck: route.deck,
         card: route.card,
       });
+      break;
+    case "moveCard":
+      navigation.navigate("moveCard", { deck: route.deck, card: route.card });
       break;
     case "review":
       navigation.navigate("review", {
@@ -104,15 +110,26 @@ function CardsRoute({
   navigation,
   route,
 }: NativeStackScreenProps<RootStackParamList, "cards">) {
+  const [reloadKey, setReloadKey] = useState(0);
+  useFocusEffect(
+    useCallback(() => {
+      setReloadKey((current) => current + 1);
+    }, []),
+  );
+
   return (
     <CardsScreen
       deck={route.params.deck}
+      reloadKey={reloadKey}
       onBack={() => navigation.goBack()}
       onCreateCard={() =>
         navigation.navigate("cardForm", { deck: route.params.deck })
       }
       onEditCard={(card) =>
         navigation.navigate("cardForm", { deck: route.params.deck, card })
+      }
+      onMoveCard={(card) =>
+        navigation.navigate("moveCard", { deck: route.params.deck, card })
       }
       onReview={() =>
         navigation.navigate("review", { deck: route.params.deck })
@@ -178,6 +195,20 @@ function CardFormRoute({
   );
 }
 
+function MoveCardRoute({
+  navigation,
+  route,
+}: NativeStackScreenProps<RootStackParamList, "moveCard">) {
+  return (
+    <MoveCardScreen
+      card={route.params.card}
+      deck={route.params.deck}
+      onBack={() => navigation.goBack()}
+      onMoved={() => navigation.goBack()}
+    />
+  );
+}
+
 function SettingsRoute({
   navigation,
 }: NativeStackScreenProps<RootStackParamList, "settings">) {
@@ -193,6 +224,7 @@ export function AppRouter() {
         <Stack.Screen component={DecksRoute} name="decks" />
         <Stack.Screen component={CardsRoute} name="cards" />
         <Stack.Screen component={CardFormRoute} name="cardForm" />
+        <Stack.Screen component={MoveCardRoute} name="moveCard" />
         <Stack.Screen component={DeckFormRoute} name="deckForm" />
         <Stack.Screen component={GroupFormRoute} name="groupForm" />
         <Stack.Screen component={ReviewRoute} name="review" />

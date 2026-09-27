@@ -85,3 +85,23 @@ export function deleteFlashcard(
 ): Promise<void> {
   return repository.remove(id);
 }
+
+export async function moveFlashcard(
+  repository: FlashcardRepository,
+  card: Flashcard,
+  targetDeckId: string,
+  now: Date,
+): Promise<Flashcard> {
+  if (card.deckId === targetDeckId) {
+    throw new Error("O cartão já está neste baralho");
+  }
+
+  const movedCard: Flashcard = {
+    ...card,
+    deckId: targetDeckId,
+    updatedAt: now.toISOString(),
+  };
+
+  await repository.moveToDeck(card.id, targetDeckId, movedCard.updatedAt);
+  return movedCard;
+}

@@ -95,5 +95,16 @@ export function createFlashcardRepository(
     async remove(id) {
       await database.runAsync("DELETE FROM cards WHERE id = ?", id);
     },
+
+    async moveToDeck(id, deckId, updatedAt) {
+      await database.runAsync(
+        `UPDATE cards
+         SET deck_id = ?, updated_at = ?
+         WHERE id = ?`,
+        deckId,
+        updatedAt,
+        id,
+      );
+    },
   };
 }

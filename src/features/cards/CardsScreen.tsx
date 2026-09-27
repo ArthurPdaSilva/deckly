@@ -2,6 +2,7 @@ import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { AnimatedScreen } from "../../components/AnimatedScreen";
+import { ConfirmModal } from "../../components/ConfirmModal";
 import { notify } from "../../components/notifications";
 import { useLanguage } from "../../styles/LanguageProvider";
 import { useTheme } from "../../styles/ThemeProvider";
@@ -16,6 +17,8 @@ interface CardsScreenProps {
   onReview?: () => void;
   onCreateCard?: () => void;
   onEditCard?: (card: Flashcard) => void;
+  onMoveCard?: (card: Flashcard) => void;
+  reloadKey?: number;
 }
 
 export function CardsScreen({
@@ -24,6 +27,8 @@ export function CardsScreen({
   onReview,
   onCreateCard,
   onEditCard,
+  onMoveCard,
+  reloadKey = 0,
 }: CardsScreenProps) {
   const database = useSQLiteContext();
   const { theme } = useTheme();
@@ -34,6 +39,7 @@ export function CardsScreen({
     null,
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reloadKey forces a reload when the screen regains focus
   useEffect(() => {
     let mounted = true;
     const repository = createFlashcardRepository(database);
@@ -48,7 +54,7 @@ export function CardsScreen({
     return () => {
       mounted = false;
     };
-  }, [database, deck.id]);
+  }, [database, deck.id, reloadKey]);
 
   async function handleConfirmDelete() {
     if (!cardPendingDelete) {
@@ -236,28 +242,6 @@ export function CardsScreen({
       color: theme.colors.danger,
       fontWeight: "700",
     },
-    confirmation: {
-      backgroundColor: theme.colors.surfaceElevated,
-      borderColor: theme.colors.accent,
-      borderRadius: 18,
-      borderWidth: 1,
-      marginTop: theme.spacing.lg,
-      padding: theme.spacing.md,
-    },
-    confirmationTitle: {
-      color: theme.colors.text,
-      fontSize: theme.typography.body,
-      fontWeight: "700",
-    },
-    confirmationText: {
-      color: theme.colors.textSecondary,
-      marginTop: theme.spacing.xs,
-    },
-    confirmationActions: {
-      flexDirection: "row",
-      gap: theme.spacing.lg,
-      marginTop: theme.spacing.md,
-    },
   });
 
   return (
@@ -303,6 +287,9 @@ export function CardsScreen({
                   <Pressable onPress={() => onEditCard?.(item)}>
                     <Text style={styles.editAction}>{t("edit")}</Text>
                   </Pressable>
+                  <Pressable onPress={() => onMoveCard?.(item)}>
+                    <Text style={styles.editAction}>{t("move")}</Text>
+                  </Pressable>
                   <Pressable onPress={() => setCardPendingDelete(item)}>
                     <Text style={styles.deleteAction}>{t("delete")}</Text>
                   </Pressable>
@@ -311,21 +298,16 @@ export function CardsScreen({
             )}
           />
         )}
-        {cardPendingDelete ? (
-          <View style={styles.confirmation}>
-            <Text style={styles.confirmationTitle}>{t("deleteCardTitle")}</Text>
-            <Text style={styles.confirmationText}>{t("deleteCardText")}</Text>
-            <View style={styles.confirmationActions}>
-              <Pressable onPress={() => setCardPendingDelete(null)}>
-                <Text style={styles.editAction}>{t("cancel")}</Text>
-              </Pressable>
-              <Pressable onPress={() => void handleConfirmDelete()}>
-                <Text style={styles.deleteAction}>{t("confirmDelete")}</Text>
-              </Pressable>
-            </View>
-          </View>
-        ) : null}
       </View>
+      <ConfirmModal
+        cancelLabel={t("cancel")}
+        confirmLabel={t("confirmDelete")}
+        message={t("deleteCardText")}
+        onCancel={() => setCardPendingDelete(null)}
+        onConfirm={() => void handleConfirmDelete()}
+        title={t("deleteCardTitle")}
+        visible={cardPendingDelete !== null}
+      />
     </AnimatedScreen>
   );
 }

@@ -11,7 +11,6 @@ Deckly é um aplicativo React Native para flashcards e repetição espaçada. A 
 - Usar `StyleSheet` do React Native e tokens próprios; não adicionar Tailwind, NativeWind ou Material UI sem uma decisão explícita.
 - Não acoplar a interface, o banco ou os casos de uso a um algoritmo específico de repetição espaçada.
 - Toda funcionalidade nova deve incluir testes automatizados.
-- Usar TDD: escrever e executar o teste antes da implementação de cada item novo.
 - Não adicionar dependência remota para o fluxo principal de estudo.
 - Não apagar ou substituir dados locais sem migration explícita e testes de compatibilidade.
 - A ordem manual dos baralhos deve ser persistida; drag and drop exige migration e testes antes de ser disponibilizado.
@@ -77,17 +76,7 @@ Os testes devem espelhar a estrutura da source em `src/__tests__/`. Priorizar te
 
 Usar testes determinísticos para datas e horários. Não depender de rede, relógio real ou estado compartilhado entre testes.
 
-### Ciclo TDD obrigatório
-
-Para cada item novo:
-
-1. Escrever o teste do comportamento esperado.
-2. Executar o teste e confirmar a falha esperada.
-3. Implementar a menor solução necessária.
-4. Executar a suite completa.
-5. Refatorar somente com os testes passando.
-
-Não considerar uma funcionalidade concluída sem teste automatizado correspondente.
+Não considerar uma funcionalidade concluída sem teste automatizado correspondente. Os testes podem ser escritos durante ou logo após a implementação, sem exigir um ciclo TDD estrito.
 
 ## Workflow obrigatório
 

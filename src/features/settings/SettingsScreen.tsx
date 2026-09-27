@@ -169,10 +169,12 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
       marginTop: theme.spacing.md,
     },
     languageButton: {
+      alignItems: "center",
       borderColor: theme.colors.border,
       borderRadius: 12,
       borderWidth: 1,
       flex: 1,
+      justifyContent: "center",
       padding: theme.spacing.sm,
     },
     languageButtonActive: {
@@ -195,10 +197,12 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
       marginTop: theme.spacing.md,
     },
     algorithmButton: {
+      alignItems: "center",
       borderColor: theme.colors.border,
       borderRadius: 12,
       borderWidth: 1,
       flex: 1,
+      justifyContent: "center",
       padding: theme.spacing.sm,
     },
     algorithmButtonActive: {

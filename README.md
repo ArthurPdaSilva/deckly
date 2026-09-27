@@ -11,7 +11,7 @@ Deckly is a mobile flashcard application based on spaced repetition and inspired
 O Deckly deve transformar revisões curtas e consistentes em um hábito de aprendizagem. A primeira versão prioriza uma experiência simples:
 
 - criar e organizar baralhos;
-- criar, editar e excluir flashcards;
+- criar, editar, excluir e mover flashcards entre baralhos;
 - revisar cartões em sessões diárias;
 - revisar todos os cartões ou somente um baralho;
 - avaliar a dificuldade de cada resposta;
@@ -55,7 +55,6 @@ O domínio deverá separar, no mínimo:
 - Toasts globais com configuração visual própria para feedback de ações.
 - Movimento funcional com entradas suaves de tela e feedback de pressão nos controles.
 - Testes automatizados desde a primeira funcionalidade.
-- Desenvolvimento orientado a testes (TDD): teste primeiro, implementação depois e refatoração por último.
 - GitHub Actions para CI/CD desde o início do desenvolvimento.
 
 Não será utilizado Material UI, pois ele é direcionado principalmente ao React para web. NativeWind/Tailwind também não será adotado inicialmente: o Deckly usará componentes próprios e tokens para preservar controle visual e reduzir dependências.
@@ -142,12 +141,13 @@ Casos de uso e repositories não devem depender diretamente da classe do SQLite.
 ### Primeiro fluxo funcional
 
 - [x] Criar e listar baralhos.
-- [x] Editar e excluir baralhos.
+- [x] Editar e excluir baralhos, com confirmação por modal.
 - [x] Feedback visual por toast em ações de sucesso e erro.
 - [x] Seed manual de desenvolvimento para decks e cartões.
-- [x] Criar, editar, excluir e organizar grupos e baralhos por drag and drop.
+- [x] Criar, editar, excluir (com confirmação por modal) e organizar grupos e baralhos por drag and drop.
 - [x] Criar e listar flashcards dentro de um baralho.
-- [x] Editar e excluir flashcards.
+- [x] Editar e excluir flashcards, com confirmação por modal.
+- [x] Mover flashcards entre baralhos, em tela própria, preservando agendamento e histórico.
 - [x] Implementar sessão de revisão.
 - [x] Implementar avaliação da resposta.
 - [x] Exibir progresso da sessão e resumo ao concluir.
@@ -165,14 +165,7 @@ Casos de uso e repositories não devem depender diretamente da classe do SQLite.
 
 ## Qualidade e CI/CD
 
-Toda nova funcionalidade deve ser desenvolvida usando TDD, seguindo este ciclo:
-
-1. Escrever um teste que descreva o comportamento esperado.
-2. Executar o teste e confirmar que ele falha pelo motivo correto.
-3. Implementar a menor mudança necessária para fazê-lo passar.
-4. Refatorar mantendo todos os testes passando.
-
-O teste deve ser criado antes do código de produção para cada item novo, incluindo regras de negócio, repositories, stores, componentes e fluxos de tela.
+Toda nova funcionalidade deve incluir testes automatizados cobrindo regras de negócio, repositories, stores, componentes e fluxos de tela. Os testes podem ser escritos durante ou logo após a implementação.
 
 O pipeline deve validar, no mínimo:
 

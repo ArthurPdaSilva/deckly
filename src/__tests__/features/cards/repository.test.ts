@@ -103,4 +103,23 @@ describe("SQLite flashcard repository", () => {
       card.id,
     );
   });
+
+  it("moves a flashcard to another deck keeping its scheduling state", async () => {
+    const database = {
+      runAsync: jest.fn().mockResolvedValue(undefined),
+      getAllAsync: jest.fn(),
+    };
+    const repository = createFlashcardRepository(database);
+
+    await repository.moveToDeck("card-1", "deck-2", "2026-02-03T10:00:00.000Z");
+
+    expect(database.runAsync).toHaveBeenCalledWith(
+      expect.stringMatching(
+        /UPDATE cards\s+SET deck_id = \?, updated_at = \?\s+WHERE id = \?/,
+      ),
+      "deck-2",
+      "2026-02-03T10:00:00.000Z",
+      "card-1",
+    );
+  });
 });

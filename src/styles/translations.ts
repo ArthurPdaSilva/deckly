@@ -22,6 +22,9 @@ export const translations: Record<Language, Record<string, string>> = {
     openDecks: "Abrir baralhos",
     editGroup: "Editar grupo",
     deleteGroup: "Excluir grupo",
+    deleteGroupTitle: "Excluir este grupo?",
+    deleteGroupText:
+      "Os baralhos deste grupo não serão excluídos e passam a ficar sem grupo.",
     noGroups: "Nenhum grupo criado ainda.",
     ungrouped: "Sem grupo",
     decks: "Seus baralhos",
@@ -39,6 +42,15 @@ export const translations: Record<Language, Record<string, string>> = {
     deleteDeckText: "Os cartões desse baralho também serão removidos.",
     deleteCardTitle: "Excluir este cartão?",
     deleteCardText: "Esta ação não pode ser desfeita.",
+    move: "Mover",
+    moveCardEyebrow: "MOVER CARTÃO",
+    currentDeck: "Baralho atual: {deck}",
+    moveCardTitle: "Mover para outro baralho",
+    moveCardText:
+      "O progresso e o histórico de revisões do cartão são mantidos.",
+    noOtherDecks: "Crie outro baralho para poder mover este cartão.",
+    cardMoved: "Cartão movido para {deck}.",
+    cardAlreadyInDeck: "O cartão já está neste baralho",
     cancel: "Cancelar",
     confirmDelete: "Confirmar exclusão",
     cards: "BARALHO",
@@ -157,6 +169,9 @@ export const translations: Record<Language, Record<string, string>> = {
     openDecks: "Open decks",
     editGroup: "Edit group",
     deleteGroup: "Delete group",
+    deleteGroupTitle: "Delete this group?",
+    deleteGroupText:
+      "The decks in this group will not be deleted and become ungrouped.",
     noGroups: "No groups created yet.",
     ungrouped: "Ungrouped",
     decks: "Your decks",
@@ -174,6 +189,14 @@ export const translations: Record<Language, Record<string, string>> = {
     deleteDeckText: "The cards in this deck will also be removed.",
     deleteCardTitle: "Delete this card?",
     deleteCardText: "This action cannot be undone.",
+    move: "Move",
+    moveCardEyebrow: "MOVE CARD",
+    currentDeck: "Current deck: {deck}",
+    moveCardTitle: "Move to another deck",
+    moveCardText: "The card's progress and review history are kept.",
+    noOtherDecks: "Create another deck to be able to move this card.",
+    cardMoved: "Card moved to {deck}.",
+    cardAlreadyInDeck: "The card is already in this deck",
     cancel: "Cancel",
     confirmDelete: "Confirm deletion",
     cards: "DECK",
@@ -290,6 +313,7 @@ export function translateError(language: Language, message: string): string {
     "O nome do grupo não pode ficar vazio": "groupNameRequired",
     "A frente do cartão não pode ficar vazia": "frontRequired",
     "O verso do cartão não pode ficar vazio": "backRequired",
+    "O cartão já está neste baralho": "cardAlreadyInDeck",
   };
   const key = keys[message];
   return key ? translate(language, key) : message;

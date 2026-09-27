@@ -7,6 +7,7 @@ import {
   createFlashcard,
   deleteFlashcard,
   listFlashcards,
+  moveFlashcard,
   updateFlashcard,
 } from "../../../features/cards/useCases";
 
@@ -14,6 +15,7 @@ function createRepository() {
   const savedCards: Flashcard[] = [];
   const updatedCards: Flashcard[] = [];
   const removedCardIds: string[] = [];
+  const movedCards: { id: string; deckId: string; updatedAt: string }[] = [];
   const repository: FlashcardRepository = {
     async save(card) {
       savedCards.push(card);
@@ -27,9 +29,12 @@ function createRepository() {
     async remove(id) {
       removedCardIds.push(id);
     },
+    async moveToDeck(id, deckId, updatedAt) {
+      movedCards.push({ id, deckId, updatedAt });
+    },
   };
 
-  return { repository, savedCards, updatedCards, removedCardIds };
+  return { repository, savedCards, updatedCards, removedCardIds, movedCards };
 }
 
 describe("flashcard use cases", () => {
@@ -131,5 +136,62 @@ describe("flashcard use cases", () => {
     await deleteFlashcard(repository, "card-1");
 
     expect(removedCardIds).toEqual(["card-1"]);
+  });
+
+  it("moves a flashcard to another deck preserving its schedule", async () => {
+    const { repository, movedCards } = createRepository();
+    const card: Flashcard = {
+      id: "card-1",
+      deckId: "deck-1",
+      front: "Q",
+      back: "A",
+      dueAt: "2026-02-05T10:00:00.000Z",
+      intervalDays: 4,
+      easeFactor: 2.6,
+      repetitions: 2,
+      createdAt: "2026-02-01T10:00:00.000Z",
+      updatedAt: "2026-02-01T10:00:00.000Z",
+    };
+
+    const moved = await moveFlashcard(
+      repository,
+      card,
+      "deck-2",
+      new Date("2026-02-03T10:00:00.000Z"),
+    );
+
+    expect(moved).toEqual({
+      ...card,
+      deckId: "deck-2",
+      updatedAt: "2026-02-03T10:00:00.000Z",
+    });
+    expect(movedCards).toEqual([
+      {
+        id: "card-1",
+        deckId: "deck-2",
+        updatedAt: "2026-02-03T10:00:00.000Z",
+      },
+    ]);
+  });
+
+  it("rejects moving a flashcard to the deck it already belongs to", async () => {
+    const { repository, movedCards } = createRepository();
+    const card: Flashcard = {
+      id: "card-1",
+      deckId: "deck-1",
+      front: "Q",
+      back: "A",
+      dueAt: "2026-02-01T10:00:00.000Z",
+      intervalDays: 0,
+      easeFactor: 2.5,
+      repetitions: 0,
+      createdAt: "2026-02-01T10:00:00.000Z",
+      updatedAt: "2026-02-01T10:00:00.000Z",
+    };
+
+    await expect(
+      moveFlashcard(repository, card, "deck-1", new Date()),
+    ).rejects.toThrow("O cartão já está neste baralho");
+    expect(movedCards).toEqual([]);
   });
 });

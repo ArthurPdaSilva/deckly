@@ -27,4 +27,5 @@ export interface FlashcardRepository {
   findByDeckId(deckId: string): Promise<Flashcard[]>;
   update(card: Flashcard): Promise<void>;
   remove(id: string): Promise<void>;
+  moveToDeck(id: string, deckId: string, updatedAt: string): Promise<void>;
 }

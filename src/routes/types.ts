@@ -10,6 +10,7 @@ export type AppRoute =
   | { name: "groupForm"; group?: DeckGroup }
   | { name: "deckForm"; deck?: Deck; groupId?: string | null }
   | { name: "cardForm"; deck: Deck; card?: Flashcard }
+  | { name: "moveCard"; deck: Deck; card: Flashcard }
   | { name: "review"; deck?: Deck; group?: DeckGroup }
   | { name: "statistics" }
   | { name: "settings" };
@@ -23,6 +24,7 @@ export type RootStackParamList = {
   groupForm: { group?: DeckGroup };
   deckForm: { deck?: Deck; groupId?: string | null };
   cardForm: { deck: Deck; card?: Flashcard };
+  moveCard: { deck: Deck; card: Flashcard };
   statistics: undefined;
   settings: undefined;
 };

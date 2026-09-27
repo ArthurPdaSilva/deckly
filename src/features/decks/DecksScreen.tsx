@@ -2,6 +2,7 @@ import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { AnimatedScreen } from "../../components/AnimatedScreen";
+import { ConfirmModal } from "../../components/ConfirmModal";
 import { notify } from "../../components/notifications";
 import type { AppRoute } from "../../routes/types";
 import { useLanguage } from "../../styles/LanguageProvider";
@@ -340,28 +341,6 @@ export function DecksScreen({
       color: theme.colors.danger,
       fontWeight: "700",
     },
-    confirmation: {
-      backgroundColor: theme.colors.surfaceElevated,
-      borderColor: theme.colors.accent,
-      borderRadius: 18,
-      borderWidth: 1,
-      marginTop: theme.spacing.lg,
-      padding: theme.spacing.md,
-    },
-    confirmationTitle: {
-      color: theme.colors.text,
-      fontSize: theme.typography.body,
-      fontWeight: "700",
-    },
-    confirmationText: {
-      color: theme.colors.textSecondary,
-      marginTop: theme.spacing.xs,
-    },
-    confirmationActions: {
-      flexDirection: "row",
-      gap: theme.spacing.lg,
-      marginTop: theme.spacing.md,
-    },
   });
 
   return (
@@ -471,21 +450,16 @@ export function DecksScreen({
             )}
           />
         )}
-        {deckPendingDelete ? (
-          <View style={styles.confirmation}>
-            <Text style={styles.confirmationTitle}>{t("deleteDeckTitle")}</Text>
-            <Text style={styles.confirmationText}>{t("deleteDeckText")}</Text>
-            <View style={styles.confirmationActions}>
-              <Pressable onPress={() => setDeckPendingDelete(null)}>
-                <Text style={styles.editAction}>{t("cancel")}</Text>
-              </Pressable>
-              <Pressable onPress={() => void handleConfirmDelete()}>
-                <Text style={styles.deleteAction}>{t("confirmDelete")}</Text>
-              </Pressable>
-            </View>
-          </View>
-        ) : null}
       </View>
+      <ConfirmModal
+        cancelLabel={t("cancel")}
+        confirmLabel={t("confirmDelete")}
+        message={t("deleteDeckText")}
+        onCancel={() => setDeckPendingDelete(null)}
+        onConfirm={() => void handleConfirmDelete()}
+        title={t("deleteDeckTitle")}
+        visible={deckPendingDelete !== null}
+      />
     </AnimatedScreen>
   );
 }

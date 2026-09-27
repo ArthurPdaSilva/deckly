@@ -112,4 +112,60 @@ describe("CardsScreen", () => {
       );
     });
   });
+
+  it("opens the move screen for a flashcard", async () => {
+    const database = {
+      runAsync: jest.fn().mockResolvedValue(undefined),
+      getAllAsync: jest.fn().mockResolvedValue([
+        {
+          id: "card-1",
+          deck_id: "deck-1",
+          front: "Hello",
+          back: "Olá",
+          due_at: "2026-02-01T10:00:00.000Z",
+          interval_days: 0,
+          ease_factor: 2.5,
+          repetitions: 0,
+          created_at: "2026-02-01T10:00:00.000Z",
+          updated_at: "2026-02-01T10:00:00.000Z",
+        },
+      ]),
+    };
+    jest.mocked(useSQLiteContext).mockReturnValue(database as never);
+
+    const onMoveCard = jest.fn();
+    const screen = render(
+      <ThemeProvider mode="light">
+        <CardsScreen deck={deck} onBack={jest.fn()} onMoveCard={onMoveCard} />
+      </ThemeProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByText("Hello")).toBeTruthy());
+    fireEvent.press(screen.getByText("Mover"));
+    expect(onMoveCard).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "card-1" }),
+    );
+  });
+
+  it("reloads the cards when the reload key changes", async () => {
+    const database = {
+      runAsync: jest.fn().mockResolvedValue(undefined),
+      getAllAsync: jest.fn().mockResolvedValue([]),
+    };
+    jest.mocked(useSQLiteContext).mockReturnValue(database as never);
+
+    const screen = render(
+      <ThemeProvider mode="light">
+        <CardsScreen deck={deck} onBack={jest.fn()} reloadKey={0} />
+      </ThemeProvider>,
+    );
+    await waitFor(() => expect(database.getAllAsync).toHaveBeenCalledTimes(1));
+
+    screen.rerender(
+      <ThemeProvider mode="light">
+        <CardsScreen deck={deck} onBack={jest.fn()} reloadKey={1} />
+      </ThemeProvider>,
+    );
+    await waitFor(() => expect(database.getAllAsync).toHaveBeenCalledTimes(2));
+  });
 });

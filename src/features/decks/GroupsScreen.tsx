@@ -2,6 +2,7 @@ import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { AnimatedScreen } from "../../components/AnimatedScreen";
+import { ConfirmModal } from "../../components/ConfirmModal";
 import { notify } from "../../components/notifications";
 import type { AppRoute } from "../../routes/types";
 import { useLanguage } from "../../styles/LanguageProvider";
@@ -21,6 +22,8 @@ export function GroupsScreen({ onNavigate, onBack }: GroupsScreenProps) {
   const { t } = useLanguage();
   const [groups, setGroups] = useState<DeckGroup[]>([]);
   const [hasUngroupedDecks, setHasUngroupedDecks] = useState(false);
+  const [groupPendingDelete, setGroupPendingDelete] =
+    useState<DeckGroup | null>(null);
 
   useEffect(() => {
     void Promise.all([
@@ -33,8 +36,12 @@ export function GroupsScreen({ onNavigate, onBack }: GroupsScreenProps) {
   }, [database]);
 
   const styles = StyleSheet.create({
-    container: {
+    list: {
       backgroundColor: theme.colors.background,
+      flex: 1,
+    },
+    container: {
+      flexGrow: 1,
       padding: theme.spacing.lg,
       paddingTop: theme.spacing.xl,
     },
@@ -87,6 +94,15 @@ export function GroupsScreen({ onNavigate, onBack }: GroupsScreenProps) {
     notify.success(t("deleteGroup"));
   }
 
+  async function handleConfirmDelete() {
+    if (!groupPendingDelete) {
+      return;
+    }
+
+    await deleteGroup(groupPendingDelete);
+    setGroupPendingDelete(null);
+  }
+
   function renderGroup({ item: group }: { item: DeckGroup }) {
     return (
       <View style={styles.group}>
@@ -99,7 +115,7 @@ export function GroupsScreen({ onNavigate, onBack }: GroupsScreenProps) {
         <Pressable onPress={() => onNavigate({ name: "groupForm", group })}>
           <Text style={styles.groupAction}>{t("editGroup")}</Text>
         </Pressable>
-        <Pressable onPress={() => void deleteGroup(group)}>
+        <Pressable onPress={() => setGroupPendingDelete(group)}>
           <Text style={[styles.groupAction, { color: theme.colors.danger }]}>
             {t("deleteGroup")}
           </Text>
@@ -131,6 +147,7 @@ export function GroupsScreen({ onNavigate, onBack }: GroupsScreenProps) {
       <FlatList<DeckGroup>
         contentContainerStyle={styles.container}
         data={groups}
+        style={styles.list}
         keyExtractor={(group) => group.id}
         ListFooterComponent={renderFooter}
         ListHeaderComponent={
@@ -149,6 +166,15 @@ export function GroupsScreen({ onNavigate, onBack }: GroupsScreenProps) {
           </>
         }
         renderItem={renderGroup}
+      />
+      <ConfirmModal
+        cancelLabel={t("cancel")}
+        confirmLabel={t("confirmDelete")}
+        message={t("deleteGroupText")}
+        onCancel={() => setGroupPendingDelete(null)}
+        onConfirm={() => void handleConfirmDelete()}
+        title={t("deleteGroupTitle")}
+        visible={groupPendingDelete !== null}
       />
     </AnimatedScreen>
   );
