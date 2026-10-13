@@ -91,6 +91,8 @@ describe("SQLite review repository", () => {
       0,
       0,
       0,
+      0,
+      null,
       review.reviewedAt,
       "card-1",
     );

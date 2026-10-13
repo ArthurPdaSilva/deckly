@@ -122,12 +122,16 @@ describe("DecksScreen", () => {
     );
 
     await waitFor(() => expect(screen.getByText("Inglês")).toBeTruthy());
+    expect(screen.queryByText("Editar")).toBeNull();
+    fireEvent.press(screen.getByTestId("deck-menu-deck-1"));
     fireEvent.press(screen.getByText("Editar"));
-    expect(onNavigate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        name: "deckForm",
-        deck: expect.objectContaining({ id: "deck-1" }),
-      }),
+    await waitFor(() =>
+      expect(onNavigate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: "deckForm",
+          deck: expect.objectContaining({ id: "deck-1" }),
+        }),
+      ),
     );
   });
 
@@ -154,8 +158,7 @@ describe("DecksScreen", () => {
 
     fireEvent.press(screen.getByText("Meus baralhos"));
     await waitFor(() => expect(screen.getByText("Sem grupo")).toBeTruthy());
-    const openButtons = screen.getAllByText("Abrir baralhos");
-    fireEvent.press(openButtons[openButtons.length - 1]);
+    fireEvent.press(screen.getByText("Sem grupo"));
     await waitFor(() => expect(screen.getByText("Vocabulário")).toBeTruthy());
     fireEvent.press(screen.getByTestId("deck-deck-1"));
 
@@ -184,9 +187,12 @@ describe("DecksScreen", () => {
     );
 
     await waitFor(() => expect(screen.getByText("Inglês")).toBeTruthy());
+    fireEvent.press(screen.getByTestId("deck-menu-deck-1"));
     fireEvent.press(screen.getByText("Excluir"));
 
-    expect(screen.getByText("Excluir este baralho?")).toBeTruthy();
+    await waitFor(() =>
+      expect(screen.getByText("Excluir este baralho?")).toBeTruthy(),
+    );
     fireEvent.press(screen.getByText("Confirmar exclusão"));
 
     await waitFor(() => {
@@ -195,5 +201,35 @@ describe("DecksScreen", () => {
         "deck-1",
       );
     });
+  });
+
+  it("reloads the decks when the reload key changes", async () => {
+    const database = {
+      runAsync: jest.fn().mockResolvedValue(undefined),
+      getAllAsync: jest.fn().mockResolvedValue([]),
+    };
+    jest.mocked(useSQLiteContext).mockReturnValue(database as never);
+
+    const screen = render(
+      <ThemeProvider mode="light">
+        <DecksScreen reloadKey={0} />
+      </ThemeProvider>,
+    );
+    await waitFor(() =>
+      expect(screen.getByText("Nenhum baralho criado ainda.")).toBeTruthy(),
+    );
+    const callsBefore = database.getAllAsync.mock.calls.length;
+
+    screen.rerender(
+      <ThemeProvider mode="light">
+        <DecksScreen reloadKey={1} />
+      </ThemeProvider>,
+    );
+
+    await waitFor(() =>
+      expect(database.getAllAsync.mock.calls.length).toBeGreaterThan(
+        callsBefore,
+      ),
+    );
   });
 });

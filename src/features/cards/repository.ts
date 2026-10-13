@@ -11,6 +11,7 @@ interface FlashcardRow {
   deck_id: string;
   front: string;
   back: string;
+  front_audio_uri: string | null;
   due_at: string;
   interval_days: number;
   ease_factor: number;
@@ -21,6 +22,8 @@ interface FlashcardRow {
   fsrs_difficulty: number;
   fsrs_state: number;
   fsrs_lapses: number;
+  fsrs_learning_steps: number;
+  fsrs_last_review_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -32,13 +35,14 @@ export function createFlashcardRepository(
     async save(card) {
       await database.runAsync(
         `INSERT INTO cards (
-          id, deck_id, front, back, due_at, interval_days,
+          id, deck_id, front, back, front_audio_uri, due_at, interval_days,
           ease_factor, repetitions, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         card.id,
         card.deckId,
         card.front,
         card.back,
+        card.frontAudioUri ?? null,
         card.dueAt,
         card.intervalDays,
         card.easeFactor,
@@ -50,9 +54,10 @@ export function createFlashcardRepository(
 
     async findByDeckId(deckId) {
       const rows = await database.getAllAsync<FlashcardRow>(
-        `SELECT id, deck_id, front, back, due_at, interval_days,
+        `SELECT id, deck_id, front, back, front_audio_uri, due_at, interval_days,
            ease_factor, repetitions, interval_minutes, scheduler_algorithm,
            fsrs_stability, fsrs_difficulty, fsrs_state, fsrs_lapses,
+           fsrs_learning_steps, fsrs_last_review_at,
            created_at, updated_at
          FROM cards
          WHERE deck_id = ?
@@ -65,6 +70,7 @@ export function createFlashcardRepository(
         deckId: row.deck_id,
         front: row.front,
         back: row.back,
+        frontAudioUri: row.front_audio_uri ?? null,
         dueAt: row.due_at,
         intervalDays: row.interval_days,
         intervalMinutes: row.interval_minutes,
@@ -75,6 +81,8 @@ export function createFlashcardRepository(
         fsrsDifficulty: row.fsrs_difficulty,
         fsrsState: row.fsrs_state,
         fsrsLapses: row.fsrs_lapses,
+        fsrsLearningSteps: row.fsrs_learning_steps,
+        fsrsLastReviewAt: row.fsrs_last_review_at,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
       }));
@@ -83,10 +91,11 @@ export function createFlashcardRepository(
     async update(card) {
       await database.runAsync(
         `UPDATE cards
-         SET front = ?, back = ?, updated_at = ?
+         SET front = ?, back = ?, front_audio_uri = ?, updated_at = ?
          WHERE id = ?`,
         card.front,
         card.back,
+        card.frontAudioUri ?? null,
         card.updatedAt,
         card.id,
       );

@@ -3,10 +3,12 @@ import { useEffect, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { AnimatedScreen } from "../../components/AnimatedScreen";
 import { ConfirmModal } from "../../components/ConfirmModal";
+import { ItemActionsMenu } from "../../components/ItemActionsMenu";
 import { notify } from "../../components/notifications";
 import { useLanguage } from "../../styles/LanguageProvider";
 import { useTheme } from "../../styles/ThemeProvider";
 import type { Deck } from "../decks/domain/deck";
+import { deleteAudioFile } from "./audioStorage";
 import type { Flashcard } from "./domain/flashcard";
 import { createFlashcardRepository } from "./repository";
 import { deleteFlashcard, listFlashcards } from "./useCases";
@@ -65,6 +67,7 @@ export function CardsScreen({
       createFlashcardRepository(database),
       cardPendingDelete.id,
     );
+    await deleteAudioFile(cardPendingDelete.frontAudioUri);
     setCards((currentCards) =>
       currentCards.filter((card) => card.id !== cardPendingDelete.id),
     );
@@ -209,7 +212,23 @@ export function CardsScreen({
       backgroundColor: theme.colors.surfaceElevated,
       borderRadius: 20,
       marginTop: theme.spacing.sm,
+    },
+    cardContent: {
+      borderRadius: 20,
       padding: theme.spacing.lg,
+      paddingRight: 56,
+    },
+    cardPressed: { opacity: 0.86 },
+    cardAudio: {
+      color: theme.colors.primary,
+      fontSize: theme.typography.bodySmall,
+      fontWeight: "600",
+      marginTop: theme.spacing.sm,
+    },
+    menu: {
+      position: "absolute",
+      right: theme.spacing.sm,
+      top: theme.spacing.sm,
     },
     cardLabel: {
       color: theme.colors.textMuted,
@@ -228,19 +247,6 @@ export function CardsScreen({
       borderTopWidth: 1,
       marginTop: theme.spacing.md,
       paddingTop: theme.spacing.md,
-    },
-    cardActions: {
-      flexDirection: "row",
-      gap: theme.spacing.lg,
-      marginTop: theme.spacing.md,
-    },
-    editAction: {
-      color: theme.colors.primary,
-      fontWeight: "700",
-    },
-    deleteAction: {
-      color: theme.colors.danger,
-      fontWeight: "700",
     },
   });
 
@@ -277,22 +283,47 @@ export function CardsScreen({
             }
             renderItem={({ item }) => (
               <View style={styles.card}>
-                <Text style={styles.cardLabel}>{t("front")}</Text>
-                <Text style={styles.cardText}>{item.front}</Text>
-                <View style={styles.cardBack}>
-                  <Text style={styles.cardLabel}>{t("backSide")}</Text>
-                  <Text style={styles.cardText}>{item.back}</Text>
-                </View>
-                <View style={styles.cardActions}>
-                  <Pressable onPress={() => onEditCard?.(item)}>
-                    <Text style={styles.editAction}>{t("edit")}</Text>
-                  </Pressable>
-                  <Pressable onPress={() => onMoveCard?.(item)}>
-                    <Text style={styles.editAction}>{t("move")}</Text>
-                  </Pressable>
-                  <Pressable onPress={() => setCardPendingDelete(item)}>
-                    <Text style={styles.deleteAction}>{t("delete")}</Text>
-                  </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => onEditCard?.(item)}
+                  style={({ pressed }) => [
+                    styles.cardContent,
+                    pressed && styles.cardPressed,
+                  ]}
+                  testID={`card-${item.id}`}
+                >
+                  <Text style={styles.cardLabel}>{t("front")}</Text>
+                  <Text style={styles.cardText}>{item.front}</Text>
+                  {item.frontAudioUri ? (
+                    <Text style={styles.cardAudio}>
+                      {`🔊 ${t("audioAttachedStored")}`}
+                    </Text>
+                  ) : null}
+                  <View style={styles.cardBack}>
+                    <Text style={styles.cardLabel}>{t("backSide")}</Text>
+                    <Text style={styles.cardText}>{item.back}</Text>
+                  </View>
+                </Pressable>
+                <View style={styles.menu}>
+                  <ItemActionsMenu
+                    actions={[
+                      {
+                        label: t("edit"),
+                        onPress: () => onEditCard?.(item),
+                      },
+                      {
+                        label: t("move"),
+                        onPress: () => onMoveCard?.(item),
+                      },
+                      {
+                        label: t("delete"),
+                        destructive: true,
+                        onPress: () => setCardPendingDelete(item),
+                      },
+                    ]}
+                    testID={`card-menu-${item.id}`}
+                    title={item.front}
+                  />
                 </View>
               </View>
             )}

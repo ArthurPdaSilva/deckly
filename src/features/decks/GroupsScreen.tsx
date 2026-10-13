@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { AnimatedScreen } from "../../components/AnimatedScreen";
 import { ConfirmModal } from "../../components/ConfirmModal";
+import { ItemActionsMenu } from "../../components/ItemActionsMenu";
 import { notify } from "../../components/notifications";
 import type { AppRoute } from "../../routes/types";
 import { useLanguage } from "../../styles/LanguageProvider";
@@ -14,9 +15,14 @@ import { createDeckRepository } from "./repository";
 interface GroupsScreenProps {
   onNavigate: (route: AppRoute) => void;
   onBack: () => void;
+  reloadKey?: number;
 }
 
-export function GroupsScreen({ onNavigate, onBack }: GroupsScreenProps) {
+export function GroupsScreen({
+  onNavigate,
+  onBack,
+  reloadKey = 0,
+}: GroupsScreenProps) {
   const database = useSQLiteContext();
   const { theme } = useTheme();
   const { t } = useLanguage();
@@ -25,15 +31,23 @@ export function GroupsScreen({ onNavigate, onBack }: GroupsScreenProps) {
   const [groupPendingDelete, setGroupPendingDelete] =
     useState<DeckGroup | null>(null);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reloadKey forces a reload when the screen regains focus
   useEffect(() => {
+    let mounted = true;
     void Promise.all([
       createDeckGroupRepository(database).findAll(),
       createDeckRepository(database).findAll(),
     ]).then(([loadedGroups, decks]) => {
-      setGroups(loadedGroups);
-      setHasUngroupedDecks(decks.some((deck) => !deck.groupId));
+      if (mounted) {
+        setGroups(loadedGroups);
+        setHasUngroupedDecks(decks.some((deck) => !deck.groupId));
+      }
     });
-  }, [database]);
+
+    return () => {
+      mounted = false;
+    };
+  }, [database, reloadKey]);
 
   const styles = StyleSheet.create({
     list: {
@@ -73,17 +87,22 @@ export function GroupsScreen({ onNavigate, onBack }: GroupsScreenProps) {
       borderRadius: 18,
       borderWidth: 1,
       marginTop: theme.spacing.md,
+    },
+    groupContent: {
+      borderRadius: 18,
       padding: theme.spacing.lg,
+      paddingRight: 56,
+    },
+    groupPressed: { opacity: 0.86 },
+    menu: {
+      position: "absolute",
+      right: theme.spacing.sm,
+      top: theme.spacing.sm,
     },
     groupName: {
       color: theme.colors.text,
       fontSize: theme.typography.heading,
       fontWeight: "800",
-    },
-    groupAction: {
-      color: theme.colors.primary,
-      fontWeight: "700",
-      marginTop: theme.spacing.sm,
     },
     empty: { color: theme.colors.textSecondary, marginTop: theme.spacing.xl },
   });
@@ -106,20 +125,33 @@ export function GroupsScreen({ onNavigate, onBack }: GroupsScreenProps) {
   function renderGroup({ item: group }: { item: DeckGroup }) {
     return (
       <View style={styles.group}>
-        <Text style={styles.groupName}>{group.name}</Text>
         <Pressable
+          accessibilityRole="button"
           onPress={() => onNavigate({ name: "decks", groupId: group.id })}
+          style={({ pressed }) => [
+            styles.groupContent,
+            pressed && styles.groupPressed,
+          ]}
         >
-          <Text style={styles.groupAction}>{t("openDecks")}</Text>
+          <Text style={styles.groupName}>{group.name}</Text>
         </Pressable>
-        <Pressable onPress={() => onNavigate({ name: "groupForm", group })}>
-          <Text style={styles.groupAction}>{t("editGroup")}</Text>
-        </Pressable>
-        <Pressable onPress={() => setGroupPendingDelete(group)}>
-          <Text style={[styles.groupAction, { color: theme.colors.danger }]}>
-            {t("deleteGroup")}
-          </Text>
-        </Pressable>
+        <View style={styles.menu}>
+          <ItemActionsMenu
+            actions={[
+              {
+                label: t("edit"),
+                onPress: () => onNavigate({ name: "groupForm", group }),
+              },
+              {
+                label: t("delete"),
+                destructive: true,
+                onPress: () => setGroupPendingDelete(group),
+              },
+            ]}
+            testID={`group-menu-${group.id}`}
+            title={group.name}
+          />
+        </View>
       </View>
     );
   }
@@ -128,11 +160,15 @@ export function GroupsScreen({ onNavigate, onBack }: GroupsScreenProps) {
     if (hasUngroupedDecks) {
       return (
         <View style={styles.group}>
-          <Text style={styles.groupName}>{t("ungrouped")}</Text>
           <Pressable
+            accessibilityRole="button"
             onPress={() => onNavigate({ name: "decks", groupId: null })}
+            style={({ pressed }) => [
+              styles.groupContent,
+              pressed && styles.groupPressed,
+            ]}
           >
-            <Text style={styles.groupAction}>{t("openDecks")}</Text>
+            <Text style={styles.groupName}>{t("ungrouped")}</Text>
           </Pressable>
         </View>
       );

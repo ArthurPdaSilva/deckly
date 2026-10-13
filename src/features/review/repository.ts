@@ -18,6 +18,7 @@ interface FlashcardRow {
   deck_id: string;
   front: string;
   back: string;
+  front_audio_uri: string | null;
   due_at: string;
   interval_days: number;
   ease_factor: number;
@@ -28,6 +29,8 @@ interface FlashcardRow {
   fsrs_difficulty: number;
   fsrs_state: number;
   fsrs_lapses: number;
+  fsrs_learning_steps: number;
+  fsrs_last_review_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -38,6 +41,7 @@ function mapCard(row: FlashcardRow): Flashcard {
     deckId: row.deck_id,
     front: row.front,
     back: row.back,
+    frontAudioUri: row.front_audio_uri ?? null,
     dueAt: row.due_at,
     intervalDays: row.interval_days,
     intervalMinutes: row.interval_minutes,
@@ -48,6 +52,8 @@ function mapCard(row: FlashcardRow): Flashcard {
     fsrsDifficulty: row.fsrs_difficulty,
     fsrsState: row.fsrs_state,
     fsrsLapses: row.fsrs_lapses,
+    fsrsLearningSteps: row.fsrs_learning_steps,
+    fsrsLastReviewAt: row.fsrs_last_review_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -62,9 +68,10 @@ export function createReviewRepository(database: ReviewDatabase) {
     ): Promise<Flashcard[]> {
       const rows = groupId
         ? await database.getAllAsync<FlashcardRow>(
-            `SELECT c.id, c.deck_id, c.front, c.back, c.due_at, c.interval_days,
+            `SELECT c.id, c.deck_id, c.front, c.back, c.front_audio_uri, c.due_at, c.interval_days,
               c.ease_factor, c.repetitions, c.interval_minutes, c.scheduler_algorithm,
               c.fsrs_stability, c.fsrs_difficulty, c.fsrs_state, c.fsrs_lapses,
+              c.fsrs_learning_steps, c.fsrs_last_review_at,
               c.created_at, c.updated_at
              FROM cards c
              JOIN decks d ON d.id = c.deck_id
@@ -74,9 +81,10 @@ export function createReviewRepository(database: ReviewDatabase) {
           )
         : deckId
           ? await database.getAllAsync<FlashcardRow>(
-              `SELECT id, deck_id, front, back, due_at, interval_days,
+              `SELECT id, deck_id, front, back, front_audio_uri, due_at, interval_days,
               ease_factor, repetitions, interval_minutes, scheduler_algorithm,
               fsrs_stability, fsrs_difficulty, fsrs_state, fsrs_lapses,
+              fsrs_learning_steps, fsrs_last_review_at,
               created_at, updated_at
              FROM cards
              WHERE due_at <= ? AND deck_id = ?
@@ -84,9 +92,10 @@ export function createReviewRepository(database: ReviewDatabase) {
               [now, deckId],
             )
           : await database.getAllAsync<FlashcardRow>(
-              `SELECT id, deck_id, front, back, due_at, interval_days,
+              `SELECT id, deck_id, front, back, front_audio_uri, due_at, interval_days,
               ease_factor, repetitions, interval_minutes, scheduler_algorithm,
               fsrs_stability, fsrs_difficulty, fsrs_state, fsrs_lapses,
+              fsrs_learning_steps, fsrs_last_review_at,
               created_at, updated_at
              FROM cards
              WHERE due_at <= ?
@@ -95,6 +104,14 @@ export function createReviewRepository(database: ReviewDatabase) {
             );
 
       return rows.map(mapCard);
+    },
+
+    async countDueCards(now: string): Promise<number> {
+      const rows = await database.getAllAsync<{ count: number }>(
+        "SELECT COUNT(*) AS count FROM cards WHERE due_at <= ?",
+        [now],
+      );
+      return rows[0]?.count ?? 0;
     },
 
     async findDeckSummaries(now: string): Promise<DeckReviewSummary[]> {
@@ -131,7 +148,8 @@ export function createReviewRepository(database: ReviewDatabase) {
              SET due_at = ?, interval_days = ?, interval_minutes = ?,
                ease_factor = ?, repetitions = ?, scheduler_algorithm = ?,
                fsrs_stability = ?, fsrs_difficulty = ?, fsrs_state = ?,
-               fsrs_lapses = ?, updated_at = ?
+               fsrs_lapses = ?, fsrs_learning_steps = ?,
+               fsrs_last_review_at = ?, updated_at = ?
              WHERE id = ?`,
           nextState.dueAt,
           nextState.intervalDays,
@@ -143,6 +161,8 @@ export function createReviewRepository(database: ReviewDatabase) {
           nextState.fsrsDifficulty ?? 0,
           nextState.fsrsState ?? 0,
           nextState.fsrsLapses ?? 0,
+          nextState.fsrsLearningSteps ?? 0,
+          nextState.fsrsLastReviewAt ?? null,
           review.reviewedAt,
           cardId,
         );

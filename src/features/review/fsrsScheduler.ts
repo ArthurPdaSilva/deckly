@@ -1,4 +1,12 @@
-import { fsrs, type Grade, Rating, State } from "ts-fsrs";
+import {
+  type Card,
+  createEmptyCard,
+  fsrs,
+  type Grade,
+  Rating,
+  State,
+} from "ts-fsrs";
+import { clampRetention, DEFAULT_RETENTION } from "./algorithmRepository";
 import type {
   ReviewRating,
   ReviewState,
@@ -16,31 +24,76 @@ function toGrade(rating: ReviewRating): Grade {
   return Rating.Easy as Grade;
 }
 
+const DAY_MS = 86_400_000;
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+/**
+ * Builds the card exactly as ts-fsrs expects it: persisted learning step and
+ * real last review date. Cards that were reviewed with SM-2 (no FSRS state yet)
+ * are converted into Review state, using the interval as stability.
+ */
+function toFsrsCard(state: ReviewState, reviewedAt: Date): Card {
+  const due = new Date(state.dueAt);
+  const fsrsState = state.fsrsState ?? State.New;
+
+  if (fsrsState !== State.New && (state.fsrsStability ?? 0) > 0) {
+    const lastReview = state.fsrsLastReviewAt
+      ? new Date(state.fsrsLastReviewAt)
+      : new Date(due.getTime() - state.intervalDays * DAY_MS);
+    return {
+      due,
+      stability: state.fsrsStability as number,
+      difficulty: state.fsrsDifficulty || 5,
+      elapsed_days: 0,
+      scheduled_days: state.intervalDays,
+      learning_steps: state.fsrsLearningSteps ?? 0,
+      reps: state.repetitions,
+      lapses: state.fsrsLapses ?? 0,
+      state: fsrsState,
+      last_review: lastReview,
+    };
+  }
+
+  if (state.repetitions > 0 && state.intervalDays >= 1) {
+    return {
+      due,
+      stability: state.intervalDays,
+      difficulty: clamp(10 - (state.easeFactor - 1.3) * (5 / 1.2), 1, 10),
+      elapsed_days: 0,
+      scheduled_days: state.intervalDays,
+      learning_steps: 0,
+      reps: state.repetitions,
+      lapses: state.fsrsLapses ?? 0,
+      state: State.Review,
+      last_review: new Date(due.getTime() - state.intervalDays * DAY_MS),
+    };
+  }
+
+  return createEmptyCard(reviewedAt);
+}
+
 export class FsrsScheduler implements Scheduler {
-  private readonly scheduler = fsrs({
-    enable_fuzz: false,
-    enable_short_term: true,
-    learning_steps: ["1m", "10m"],
-    relearning_steps: ["10m"],
-  });
+  private readonly scheduler;
+
+  constructor(retention: number = DEFAULT_RETENTION) {
+    this.scheduler = fsrs({
+      request_retention: clampRetention(retention),
+      enable_fuzz: false,
+      enable_short_term: true,
+      learning_steps: ["1m", "10m"],
+      relearning_steps: ["10m"],
+    });
+  }
 
   schedule(
     state: ReviewState,
     rating: ReviewRating,
     reviewedAt: Date,
   ): ScheduleResult {
-    const card = {
-      due: new Date(state.dueAt),
-      stability: state.fsrsStability || Math.max(0.1, state.intervalDays),
-      difficulty: state.fsrsDifficulty || 5,
-      elapsed_days: state.intervalDays,
-      scheduled_days: state.intervalDays,
-      learning_steps: 0,
-      reps: state.repetitions,
-      lapses: state.fsrsLapses ?? 0,
-      state: state.fsrsState ?? State.New,
-      last_review: state.dueAt,
-    };
+    const card = toFsrsCard(state, reviewedAt);
     const result = this.scheduler.next(card, reviewedAt, toGrade(rating));
     const nextDueAt = result.card.due.toISOString();
     const nextIntervalMinutes = Math.max(
@@ -59,6 +112,8 @@ export class FsrsScheduler implements Scheduler {
         fsrsDifficulty: result.card.difficulty,
         fsrsState: result.card.state,
         fsrsLapses: result.card.lapses,
+        fsrsLearningSteps: result.card.learning_steps,
+        fsrsLastReviewAt: reviewedAt.toISOString(),
         schedulerAlgorithm: ALGORITHM,
       },
       review: {

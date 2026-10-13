@@ -7,6 +7,13 @@ import { useLanguage } from "../../styles/LanguageProvider";
 import { useTheme } from "../../styles/ThemeProvider";
 import { translateError } from "../../styles/translations";
 import type { Deck } from "../decks/domain/deck";
+import { AudioPlayButton } from "./AudioPlayButton";
+import {
+  deleteAudioFile,
+  type PickedAudio,
+  persistAudioFile,
+  pickAudioFile,
+} from "./audioStorage";
 import type { Flashcard } from "./domain/flashcard";
 import { createFlashcardRepository } from "./repository";
 import { createFlashcard, updateFlashcard } from "./useCases";
@@ -23,24 +30,62 @@ export function CardFormScreen({ deck, card, onBack }: CardFormScreenProps) {
   const { language, t } = useLanguage();
   const [front, setFront] = useState(card?.front ?? "");
   const [back, setBack] = useState(card?.back ?? "");
+  const [audioUri, setAudioUri] = useState<string | null>(
+    card?.frontAudioUri ?? null,
+  );
+  const [pickedAudio, setPickedAudio] = useState<PickedAudio | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function handleSave() {
+  async function handlePickAudio() {
     try {
+      const picked = await pickAudioFile();
+      if (picked) {
+        setPickedAudio(picked);
+        setAudioUri(picked.uri);
+      }
+    } catch {
+      notify.error(t("audioPickError"));
+    }
+  }
+
+  function handleRemoveAudio() {
+    setPickedAudio(null);
+    setAudioUri(null);
+  }
+
+  async function handleSave() {
+    let storedAudioUri = audioUri;
+    let persistedNow = false;
+    try {
+      if (pickedAudio) {
+        storedAudioUri = await persistAudioFile(pickedAudio);
+        persistedNow = true;
+      }
       const repository = createFlashcardRepository(database);
       if (card) {
-        await updateFlashcard(repository, card, { front, back }, new Date());
+        await updateFlashcard(
+          repository,
+          card,
+          { front, back, frontAudioUri: storedAudioUri },
+          new Date(),
+        );
+        if (card.frontAudioUri && card.frontAudioUri !== storedAudioUri) {
+          await deleteAudioFile(card.frontAudioUri);
+        }
       } else {
         await createFlashcard(
           repository,
           deck.id,
-          { front, back },
+          { front, back, frontAudioUri: storedAudioUri },
           { now: new Date(), createId: () => `card-${Date.now()}` },
         );
       }
       notify.success(card ? t("saveCard") : t("createCard"));
       onBack();
     } catch (cause) {
+      if (persistedNow) {
+        await deleteAudioFile(storedAudioUri);
+      }
       const message = translateError(
         language,
         cause instanceof Error ? cause.message : t("createCard"),
@@ -91,6 +136,21 @@ export function CardFormScreen({ deck, card, onBack }: CardFormScreenProps) {
       textAlignVertical: "top",
     },
     error: { color: theme.colors.danger, marginTop: theme.spacing.sm },
+    audioBox: {
+      borderColor: theme.colors.border,
+      borderRadius: 14,
+      borderWidth: 1,
+      marginTop: theme.spacing.md,
+      padding: theme.spacing.md,
+    },
+    audioName: { color: theme.colors.textSecondary },
+    audioActions: {
+      flexDirection: "row",
+      gap: theme.spacing.lg,
+      marginTop: theme.spacing.md,
+    },
+    audioAction: { color: theme.colors.primary, fontWeight: "700" },
+    audioRemove: { color: theme.colors.danger, fontWeight: "700" },
     button: {
       backgroundColor: theme.colors.primary,
       borderRadius: 14,
@@ -135,6 +195,30 @@ export function CardFormScreen({ deck, card, onBack }: CardFormScreenProps) {
             style={styles.input}
             value={back}
           />
+          <View style={styles.audioBox}>
+            {audioUri ? (
+              <>
+                <Text style={styles.audioName}>
+                  {pickedAudio
+                    ? t("audioAttached", { name: pickedAudio.name })
+                    : t("audioAttachedStored")}
+                </Text>
+                <AudioPlayButton key={audioUri} uri={audioUri} />
+                <View style={styles.audioActions}>
+                  <Pressable onPress={() => void handlePickAudio()}>
+                    <Text style={styles.audioAction}>{t("replaceAudio")}</Text>
+                  </Pressable>
+                  <Pressable onPress={handleRemoveAudio}>
+                    <Text style={styles.audioRemove}>{t("removeAudio")}</Text>
+                  </Pressable>
+                </View>
+              </>
+            ) : (
+              <Pressable onPress={() => void handlePickAudio()}>
+                <Text style={styles.audioAction}>{t("attachAudio")}</Text>
+              </Pressable>
+            )}
+          </View>
           {error ? <Text style={styles.error}>{error}</Text> : null}
           <Pressable onPress={() => void handleSave()} style={styles.button}>
             <Text style={styles.buttonLabel}>

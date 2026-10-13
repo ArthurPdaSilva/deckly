@@ -1,0 +1,10 @@
+Protontricks	com.github.Matoking.protontricks	1.15.0	stable	flathub	system
+Google Chrome	com.google.Chrome	155.0.8059.39-1	stable	flathub	system
+Gestor de Extensões	com.mattjakeman.ExtensionManager	0.6.5	stable	flathub	system
+OBS Studio	com.obsproject.Studio	32.1.1	stable	fedora	system
+Bruno	com.usebruno.Bruno	v4.2.1	stable	flathub	system
+Headlamp	io.kinvolk.Headlamp	0.45.0	stable	flathub	system
+Obsidian	md.obsidian.Obsidian	1.14.4	stable	flathub	system
+Fedora Media Writer	org.fedoraproject.MediaWriter	5.3.2	stable	flathub	system
+KeePassXC	org.keepassxc.KeePassXC	2.7.12	stable	fedora	system
+Zotero	org.zotero.Zotero	10.0.6	stable	flathub	system

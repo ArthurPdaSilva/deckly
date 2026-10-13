@@ -26,7 +26,7 @@ export function StatisticsScreen({
   onBack,
 }: StatisticsScreenProps) {
   const database = useSQLiteContext();
-  const { mode, theme, toggleTheme } = useTheme();
+  const { theme } = useTheme();
   const { t } = useLanguage();
   const [sessionNow] = useState(() => now ?? new Date());
   const [stats, setStats] = useState<DashboardStats>(EMPTY_STATS);
@@ -87,20 +87,6 @@ export function StatisticsScreen({
       fontSize: theme.typography.body,
       lineHeight: 23,
       marginTop: theme.spacing.xs,
-    },
-    themeButton: {
-      alignSelf: "flex-start",
-      borderColor: theme.colors.border,
-      borderRadius: 12,
-      borderWidth: 1,
-      marginTop: theme.spacing.md,
-      paddingHorizontal: theme.spacing.md,
-      paddingVertical: theme.spacing.sm,
-    },
-    themeButtonLabel: {
-      color: theme.colors.textSecondary,
-      fontSize: theme.typography.bodySmall,
-      fontWeight: "700",
     },
     grid: {
       flexDirection: "row",
@@ -198,11 +184,6 @@ export function StatisticsScreen({
         <Text style={styles.eyebrow}>{t("overview")}</Text>
         <Text style={styles.title}>{t("statistics")}</Text>
         <Text style={styles.subtitle}>{t("progressSubtitle")}</Text>
-        <Pressable onPress={toggleTheme} style={styles.themeButton}>
-          <Text style={styles.themeButtonLabel}>
-            {mode === "dark" ? t("useLight") : t("useDark")}
-          </Text>
-        </Pressable>
         {isLoading ? (
           <Text style={styles.loading}>{t("calculating")}</Text>
         ) : error ? (
