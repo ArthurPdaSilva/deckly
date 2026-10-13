@@ -50,6 +50,7 @@ O domínio deverá separar, no mínimo:
 - TypeScript.
 - Biome para formatação e lint.
 - `expo-sqlite` para persistência local e migrations versionadas.
+- `expo-audio` para tocar o áudio anexado à pergunta; `expo-document-picker` e `expo-file-system` para escolher e guardar o arquivo localmente.
 - `StyleSheet` nativo do React Native.
 - Design system próprio baseado em tokens semânticos.
 - Toasts globais com configuração visual própria para feedback de ações.
@@ -125,6 +126,20 @@ O botão de seed só é habilitado quando o app está em modo de desenvolvimento
 
 Na tela **Configurações**, os botões **Exportar dados** e **Importar dados** permitem transportar grupos, decks, cartões e histórico em um arquivo JSON local. A importação valida referências e faz merge por ID, sem apagar registros existentes.
 
+### Áudio nos cartões
+
+Um cartão pode ter um áudio anexado à pergunta (frente). A migration 4 adiciona a coluna opcional `cards.front_audio_uri`, sem alterar cartões existentes. Ao salvar o cartão, o arquivo escolhido é copiado para `card-audio/` dentro do diretório de documentos do app e removido quando o áudio é trocado ou retirado, ou quando o cartão é excluído. Na revisão, o botão **Tocar áudio** aparece na frente do cartão.
+
+Limitação atual: a exportação JSON guarda apenas dados de texto e agendamento; os arquivos de áudio não são incluídos no arquivo exportado.
+
+### Navegação e ações nas listas
+
+Em grupos, baralhos e cartões, tocar no item abre direto: o grupo abre seus baralhos, o baralho abre seus cartões e o cartão abre a edição. As ações secundárias (editar, mover, excluir) ficam no menu da engrenagem (`ItemActionsMenu`) de cada item; a exclusão continua pedindo confirmação. Ao salvar um grupo, baralho ou cartão, o app volta para a listagem, que recarrega ao ganhar foco, e mostra um aviso de sucesso; em caso de erro, o formulário permanece aberto com o aviso de erro.
+
+### Revisão com virar carta
+
+Na sessão de revisão, o botão **Virar carta** alterna entre a pergunta (com o áudio, se houver) e a resposta. O usuário pode virar de volta para rever a pergunta; a avaliação (De novo, Difícil, Bom, Fácil) só aparece com a carta virada para o verso.
+
 Casos de uso e repositories não devem depender diretamente da classe do SQLite. Essa fronteira permite criar posteriormente outro adaptador de persistência, inclusive para um banco relacional remoto ou MongoDB, sem alterar a interface da sessão de estudo.
 
 ## Roadmap inicial
@@ -148,6 +163,8 @@ Casos de uso e repositories não devem depender diretamente da classe do SQLite.
 - [x] Criar e listar flashcards dentro de um baralho.
 - [x] Editar e excluir flashcards, com confirmação por modal.
 - [x] Mover flashcards entre baralhos, em tela própria, preservando agendamento e histórico.
+- [x] Anexar áudio à pergunta do cartão e tocá-lo na revisão.
+- [x] Virar a carta durante a revisão, com volta para a pergunta.
 - [x] Implementar sessão de revisão.
 - [x] Implementar avaliação da resposta.
 - [x] Exibir progresso da sessão e resumo ao concluir.
@@ -205,3 +222,11 @@ npm test -- --runInBand
 ## Licença
 
 A licença do projeto ainda será definida.
+
+## Agendamento FSRS
+
+- O passo de aprendizado e a data da última revisão de cada cartão são salvos (migração 5), então "Bom" gradua o cartão de aprendizado para revisão (≈10 min → ~1–2 dias → …).
+- A hora de cada avaliação é a hora real do dispositivo; cartões com próxima revisão em até 20 min voltam ao fim da fila da mesma sessão.
+- Em Configurações, com FSRS ativo, é possível ajustar a retenção desejada (70%–97%, padrão 90%).
+- Cartões já revisados com SM-2 são convertidos para o estado de revisão do FSRS ao trocar de algoritmo.
+- "Hoje" nas estatísticas usa o dia local, não UTC.

@@ -13,7 +13,7 @@
       "package": "com.deckly.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
-        "backgroundColor": "#17131F"
+        "backgroundColor": "#00000000"
       }
     },
     "ios": {

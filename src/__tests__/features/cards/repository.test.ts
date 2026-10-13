@@ -29,6 +29,7 @@ describe("SQLite flashcard repository", () => {
       card.deckId,
       card.front,
       card.back,
+      null,
       card.dueAt,
       card.intervalDays,
       card.easeFactor,
@@ -94,6 +95,7 @@ describe("SQLite flashcard repository", () => {
       expect.stringContaining("UPDATE cards"),
       card.front,
       card.back,
+      null,
       card.updatedAt,
       card.id,
     );
@@ -119,6 +121,44 @@ describe("SQLite flashcard repository", () => {
       ),
       "deck-2",
       "2026-02-03T10:00:00.000Z",
+      "card-1",
+    );
+  });
+
+  it("persists and loads the audio attached to the front", async () => {
+    const database = {
+      runAsync: jest.fn().mockResolvedValue(undefined),
+      getAllAsync: jest.fn().mockResolvedValue([
+        {
+          id: "card-1",
+          deck_id: "deck-1",
+          front: "Question",
+          back: "Answer",
+          front_audio_uri: "file:///docs/card-audio/audio-1.mp3",
+          due_at: "2026-02-01T10:00:00.000Z",
+          interval_days: 0,
+          ease_factor: 2.5,
+          repetitions: 0,
+          created_at: "2026-02-01T10:00:00.000Z",
+          updated_at: "2026-02-01T10:00:00.000Z",
+        },
+      ]),
+    };
+    const repository = createFlashcardRepository(database);
+
+    const [loaded] = await repository.findByDeckId("deck-1");
+    await repository.update({
+      ...loaded,
+      frontAudioUri: "file:///docs/card-audio/audio-2.mp3",
+    });
+
+    expect(loaded.frontAudioUri).toBe("file:///docs/card-audio/audio-1.mp3");
+    expect(database.runAsync).toHaveBeenCalledWith(
+      expect.stringContaining("front_audio_uri = ?"),
+      "Question",
+      "Answer",
+      "file:///docs/card-audio/audio-2.mp3",
+      expect.any(String),
       "card-1",
     );
   });

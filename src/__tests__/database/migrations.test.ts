@@ -47,7 +47,7 @@ describe("database migrations", () => {
   });
 
   it("does not execute anything when the schema is up to date", async () => {
-    const database = createDatabase(3);
+    const database = createDatabase(5);
 
     await runMigrations(database);
 
@@ -66,5 +66,15 @@ describe("database migrations", () => {
         expect.stringContaining("ALTER TABLE decks ADD COLUMN sort_order"),
       ]),
     );
+  });
+
+  it("adds a nullable front audio column without touching existing cards", () => {
+    const migration = getPendingMigrations(3).find(
+      (item) => item.version === 4,
+    );
+
+    expect(migration?.statements).toEqual([
+      "ALTER TABLE cards ADD COLUMN front_audio_uri TEXT",
+    ]);
   });
 });

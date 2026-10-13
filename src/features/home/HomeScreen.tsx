@@ -20,10 +20,10 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
   useEffect(() => {
     let mounted = true;
     void createReviewRepository(database)
-      .findDueCards(new Date().toISOString())
-      .then((cards) => {
+      .countDueCards(new Date().toISOString())
+      .then((count) => {
         if (mounted) {
-          setDueCount(cards.length);
+          setDueCount(count);
         }
       });
 

@@ -56,6 +56,7 @@ describe("flashcard use cases", () => {
       deckId: "deck-1",
       front: input.front,
       back: input.back,
+      frontAudioUri: null,
       dueAt: now.toISOString(),
       intervalDays: 0,
       easeFactor: 2.5,
@@ -125,6 +126,7 @@ describe("flashcard use cases", () => {
       ...originalCard,
       front: "Updated question",
       back: "Updated answer",
+      frontAudioUri: null,
       updatedAt: updatedAt.toISOString(),
     });
     expect(updatedCards).toEqual([card]);
@@ -193,5 +195,68 @@ describe("flashcard use cases", () => {
       moveFlashcard(repository, card, "deck-1", new Date()),
     ).rejects.toThrow("O cartão já está neste baralho");
     expect(movedCards).toEqual([]);
+  });
+
+  it("stores the audio attached to the question when creating a flashcard", async () => {
+    const { repository, savedCards } = createRepository();
+
+    const card = await createFlashcard(
+      repository,
+      "deck-1",
+      {
+        front: "Do you have your passport?",
+        back: "Você está com seu passaporte?",
+        frontAudioUri: "file:///audio/passport.mp3",
+      },
+      { now: new Date("2026-02-01T10:00:00.000Z"), createId: () => "card-1" },
+    );
+
+    expect(card.frontAudioUri).toBe("file:///audio/passport.mp3");
+    expect(savedCards[0].frontAudioUri).toBe("file:///audio/passport.mp3");
+  });
+
+  it("keeps, replaces and removes the audio when updating a flashcard", async () => {
+    const { repository } = createRepository();
+    const original: Flashcard = {
+      id: "card-1",
+      deckId: "deck-1",
+      front: "Question",
+      back: "Answer",
+      frontAudioUri: "file:///audio/old.mp3",
+      dueAt: "2026-02-01T10:00:00.000Z",
+      intervalDays: 0,
+      easeFactor: 2.5,
+      repetitions: 0,
+      createdAt: "2026-02-01T10:00:00.000Z",
+      updatedAt: "2026-02-01T10:00:00.000Z",
+    };
+    const at = new Date("2026-02-02T10:00:00.000Z");
+
+    const kept = await updateFlashcard(
+      repository,
+      original,
+      { front: "Question", back: "Answer" },
+      at,
+    );
+    const replaced = await updateFlashcard(
+      repository,
+      original,
+      {
+        front: "Question",
+        back: "Answer",
+        frontAudioUri: "file:///audio/new.mp3",
+      },
+      at,
+    );
+    const removed = await updateFlashcard(
+      repository,
+      original,
+      { front: "Question", back: "Answer", frontAudioUri: null },
+      at,
+    );
+
+    expect(kept.frontAudioUri).toBe("file:///audio/old.mp3");
+    expect(replaced.frontAudioUri).toBe("file:///audio/new.mp3");
+    expect(removed.frontAudioUri).toBeNull();
   });
 });

@@ -37,6 +37,7 @@ export const translations: Record<Language, Record<string, string>> = {
     nextReview: "{count} para revisar • próxima {time}",
     review: "Revisar",
     edit: "Editar",
+    options: "Opções",
     delete: "Excluir",
     deleteDeckTitle: "Excluir este baralho?",
     deleteDeckText: "Os cartões desse baralho também serão removidos.",
@@ -89,6 +90,16 @@ export const translations: Record<Language, Record<string, string>> = {
     reviewEmpty: "Nenhuma revisão pendente.",
     reviewAnswer: "Como foi?",
     showAnswer: "Mostrar resposta",
+    flipCard: "Virar carta",
+    playAudio: "Tocar áudio",
+    pauseAudio: "Pausar áudio",
+    audioPlayError: "Não foi possível tocar o áudio",
+    audioPickError: "Não foi possível anexar o áudio",
+    attachAudio: "Anexar áudio à pergunta",
+    replaceAudio: "Trocar áudio",
+    removeAudio: "Remover áudio",
+    audioAttached: "Áudio anexado: {name}",
+    audioAttachedStored: "Áudio anexado à pergunta",
     again: "De novo",
     hard: "Difícil",
     completed: "Sessão concluída",
@@ -118,6 +129,12 @@ export const translations: Record<Language, Record<string, string>> = {
     algorithm: "Algoritmo de revisão",
     algorithmDescription:
       "A troca preserva o histórico. As próximas revisões passam a usar o algoritmo escolhido.",
+    retention: "Retenção desejada",
+    retentionDescription:
+      "Chance de lembrar no momento da revisão. Maior = revisões mais frequentes. Padrão: 90%.",
+    retentionUpdated: "Retenção atualizada.",
+    decreaseRetention: "Diminuir retenção",
+    increaseRetention: "Aumentar retenção",
     localData: "Dados locais",
     exportData: "Exportar dados",
     importData: "Importar dados",
@@ -137,6 +154,12 @@ export const translations: Record<Language, Record<string, string>> = {
     testDataDescription:
       "Substitui os dados locais por baralhos, grupos e cartões para testes manuais.",
     loadTestData: "Carregar dados de teste",
+    deleteAll: "Apagar tudo",
+    deleteAllDescription:
+      "Remove todos os grupos, baralhos, cartões, áudios e o histórico de revisões. As configurações são mantidas. Esta ação não pode ser desfeita.",
+    confirmDeleteAll: "Sim, apagar tudo",
+    allDataDeleted: "Todos os dados foram apagados.",
+    deleteAllError: "Não foi possível apagar os dados",
     seedDescription:
       "Todos os dados locais atuais serão apagados e substituídos pela seed.",
     deckNameRequired: "O nome do baralho não pode ficar vazio",
@@ -146,6 +169,13 @@ export const translations: Record<Language, Record<string, string>> = {
     seedLoadError: "Não foi possível carregar os dados de teste",
     exportError: "Não foi possível exportar os dados",
     importError: "Não foi possível importar os dados",
+    audiosLinked: "{count} áudio(s) vinculado(s) aos cartões.",
+    audiosPick:
+      'Dados importados! {count} cartão(ões) usam áudio. Toque em "Selecionar áudios" e escolha todos os arquivos .mp3 da lição de uma vez.',
+    selectAudios: "Selecionar áudios",
+    skipAudios: "Pular por enquanto",
+    audiosMissing:
+      "{count} cartão(ões) ficaram sem áudio (arquivo não selecionado).",
     exportDialogTitle: "Exportar dados do Deckly",
   },
   en: {
@@ -184,6 +214,7 @@ export const translations: Record<Language, Record<string, string>> = {
     nextReview: "{count} to review • next {time}",
     review: "Review",
     edit: "Edit",
+    options: "Options",
     delete: "Delete",
     deleteDeckTitle: "Delete this deck?",
     deleteDeckText: "The cards in this deck will also be removed.",
@@ -234,6 +265,16 @@ export const translations: Record<Language, Record<string, string>> = {
     reviewEmpty: "No pending reviews.",
     reviewAnswer: "How did it go?",
     showAnswer: "Show answer",
+    flipCard: "Flip card",
+    playAudio: "Play audio",
+    pauseAudio: "Pause audio",
+    audioPlayError: "Could not play the audio",
+    audioPickError: "Could not attach the audio",
+    attachAudio: "Attach audio to the question",
+    replaceAudio: "Replace audio",
+    removeAudio: "Remove audio",
+    audioAttached: "Audio attached: {name}",
+    audioAttachedStored: "Audio attached to the question",
     again: "Again",
     hard: "Hard",
     completed: "Session complete",
@@ -263,6 +304,12 @@ export const translations: Record<Language, Record<string, string>> = {
     algorithm: "Review algorithm",
     algorithmDescription:
       "The change preserves history. Future reviews will use the selected algorithm.",
+    retention: "Desired retention",
+    retentionDescription:
+      "Chance of remembering at review time. Higher = more frequent reviews. Default: 90%.",
+    retentionUpdated: "Retention updated.",
+    decreaseRetention: "Decrease retention",
+    increaseRetention: "Increase retention",
     localData: "Local data",
     exportData: "Export data",
     importData: "Import data",
@@ -282,6 +329,12 @@ export const translations: Record<Language, Record<string, string>> = {
     testDataDescription:
       "Replaces local data with decks, groups, and cards for manual testing.",
     loadTestData: "Load test data",
+    deleteAll: "Delete everything",
+    deleteAllDescription:
+      "Removes all groups, decks, cards, audio files and review history. Settings are kept. This cannot be undone.",
+    confirmDeleteAll: "Yes, delete everything",
+    allDataDeleted: "All data was deleted.",
+    deleteAllError: "Could not delete data",
     seedDescription:
       "All current local data will be deleted and replaced with seed data.",
     deckNameRequired: "The deck name cannot be empty",
@@ -291,6 +344,12 @@ export const translations: Record<Language, Record<string, string>> = {
     seedLoadError: "Could not load test data",
     exportError: "Could not export data",
     importError: "Could not import data",
+    audiosLinked: "{count} audio file(s) linked to cards.",
+    audiosPick:
+      'Data imported! {count} card(s) use audio. Tap "Select audio files" and choose all the lesson .mp3 files at once.',
+    selectAudios: "Select audio files",
+    skipAudios: "Skip for now",
+    audiosMissing: "{count} card(s) have no audio (file not selected).",
     exportDialogTitle: "Export Deckly data",
   },
 };

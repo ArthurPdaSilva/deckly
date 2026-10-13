@@ -11,6 +11,8 @@ export interface ReviewState {
   fsrsDifficulty?: number;
   fsrsState?: number;
   fsrsLapses?: number;
+  fsrsLearningSteps?: number;
+  fsrsLastReviewAt?: string | null;
   schedulerAlgorithm?: SchedulerAlgorithm;
 }
 

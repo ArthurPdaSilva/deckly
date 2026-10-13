@@ -10,9 +10,20 @@ import { isDevelopmentModeEnabled } from "../../config/development";
 import { resetAndSeedDatabase } from "../../database/seed";
 import { useLanguage } from "../../styles/LanguageProvider";
 import { useTheme } from "../../styles/ThemeProvider";
+import {
+  deleteAudioFile,
+  persistAudioFile,
+  pickAudioFiles,
+  readAudioAsBase64,
+  saveAudioFromBase64,
+} from "../cards/audioStorage";
 import { parseExportData, serializeExportData } from "../dataTransfer/format";
 import { createDataTransferRepository } from "../dataTransfer/repository";
-import { createAlgorithmRepository } from "../review/algorithmRepository";
+import {
+  clampRetention,
+  createAlgorithmRepository,
+  DEFAULT_RETENTION,
+} from "../review/algorithmRepository";
 import type { SchedulerAlgorithm } from "../review/domain/scheduler";
 
 interface SettingsScreenProps {
@@ -26,14 +37,29 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
   const [algorithm, setAlgorithm] = useState<SchedulerAlgorithm>("sm-2");
   const [pendingAlgorithm, setPendingAlgorithm] =
     useState<SchedulerAlgorithm | null>(null);
+  const [retention, setRetention] = useState(DEFAULT_RETENTION);
   const [pendingReset, setPendingReset] = useState(false);
   const [seedPending, setSeedPending] = useState(false);
+  const [deleteAllPending, setDeleteAllPending] = useState(false);
+  const [pendingAudioCards, setPendingAudioCards] = useState<
+    { id: string; frontAudioFile?: string | null }[] | null
+  >(null);
 
   useEffect(() => {
     void createAlgorithmRepository(database)
       .getActiveAlgorithm()
       .then(setAlgorithm);
+    void createAlgorithmRepository(database)
+      .getDesiredRetention()
+      .then(setRetention);
   }, [database]);
+
+  async function changeRetention(delta: number) {
+    const next = clampRetention(Math.round((retention + delta) * 100) / 100);
+    setRetention(next);
+    await createAlgorithmRepository(database).setDesiredRetention(next);
+    notify.success(t("retentionUpdated"));
+  }
 
   async function confirmAlgorithmChange() {
     if (!pendingAlgorithm) return;
@@ -54,6 +80,21 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
     notify.success(t("scheduleReset"));
   }
 
+  async function handleDeleteAll() {
+    try {
+      const audioUris =
+        await createDataTransferRepository(database).deleteAllData();
+      await Promise.all(audioUris.map((uri) => deleteAudioFile(uri)));
+      notify.success(t("allDataDeleted"));
+    } catch (cause) {
+      notify.error(
+        cause instanceof Error ? cause.message : t("deleteAllError"),
+      );
+    } finally {
+      setDeleteAllPending(false);
+    }
+  }
+
   async function handleSeedDatabase() {
     try {
       await resetAndSeedDatabase(database);
@@ -67,7 +108,10 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
 
   async function exportData() {
     try {
-      const data = await createDataTransferRepository(database).exportData();
+      const data =
+        await createDataTransferRepository(database).exportData(
+          readAudioAsBase64,
+        );
       const directory = FileSystem.documentDirectory;
       if (!directory) {
         throw new Error("Armazenamento local indisponível");
@@ -88,6 +132,37 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
     }
   }
 
+  async function linkImportedAudio() {
+    const expected = pendingAudioCards;
+    setPendingAudioCards(null);
+    if (!expected) return;
+
+    try {
+      const files = await pickAudioFiles();
+      const byName = new Map(
+        files.map((file) => [file.name.toLowerCase(), file] as const),
+      );
+      const repository = createDataTransferRepository(database);
+      let linked = 0;
+      for (const card of expected) {
+        const file = byName.get((card.frontAudioFile ?? "").toLowerCase());
+        if (!file) continue;
+        const uri = await persistAudioFile(
+          file,
+          () => `${Date.now()}-${linked}`,
+        );
+        await repository.attachCardAudio(card.id, uri);
+        linked += 1;
+      }
+      if (linked > 0) notify.success(t("audiosLinked", { count: linked }));
+      if (linked < expected.length) {
+        notify.error(t("audiosMissing", { count: expected.length - linked }));
+      }
+    } catch (cause) {
+      notify.error(cause instanceof Error ? cause.message : t("importError"));
+    }
+  }
+
   async function importData() {
     try {
       const result = await DocumentPicker.getDocumentAsync({
@@ -97,11 +172,28 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
       if (result.canceled) {
         return;
       }
-      const content = await FileSystem.readAsStringAsync(result.assets[0].uri);
-      await createDataTransferRepository(database).importData(
-        parseExportData(content),
-      );
+      // fetch lê o cache do seletor mesmo onde o file-system não tem permissão (ex.: Expo Go)
+      const response = await fetch(result.assets[0].uri);
+      const content = await response.text();
+      const data = parseExportData(content);
+      const repository = createDataTransferRepository(database);
+      await repository.importData(data);
       notify.success(t("dataImported"));
+      let embedded = 0;
+      for (const card of data.cards) {
+        if (!card.frontAudioData) continue;
+        const uri = await saveAudioFromBase64(
+          card.frontAudioFile ?? "audio.mp3",
+          card.frontAudioData,
+          () => `${Date.now()}-${embedded}`,
+        );
+        await repository.attachCardAudio(card.id, uri);
+        embedded += 1;
+      }
+      const withAudio = data.cards.filter(
+        (card) => card.frontAudioFile && !card.frontAudioData,
+      );
+      setPendingAudioCards(withAudio.length > 0 ? withAudio : null);
     } catch (cause) {
       notify.error(cause instanceof Error ? cause.message : t("importError"));
     }
@@ -289,8 +381,7 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
               <Text style={styles.algorithmDescription}>
                 {t("algorithmConfirm", {
                   algorithm: pendingAlgorithm.toUpperCase(),
-                })}{" "}
-                {pendingAlgorithm.toUpperCase()} às próximas revisões?
+                })}
               </Text>
               <Pressable
                 onPress={() => void confirmAlgorithmChange()}
@@ -304,6 +395,36 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
               >
                 <Text style={styles.buttonLabel}>{t("cancel")}</Text>
               </Pressable>
+            </View>
+          ) : null}
+          {algorithm === "fsrs" ? (
+            <View style={styles.algorithmConfirm}>
+              <Text style={styles.panelTitle}>{t("retention")}</Text>
+              <Text style={styles.algorithmDescription}>
+                {t("retentionDescription")}
+              </Text>
+              <View style={styles.algorithmRow}>
+                <Pressable
+                  accessibilityLabel={t("decreaseRetention")}
+                  onPress={() => void changeRetention(-0.01)}
+                  style={styles.algorithmButton}
+                >
+                  <Text style={styles.algorithmButtonLabel}>−</Text>
+                </Pressable>
+                <View style={styles.algorithmButton}>
+                  <Text
+                    style={styles.algorithmButtonLabel}
+                    testID="retention-value"
+                  >{`${Math.round(retention * 100)}%`}</Text>
+                </View>
+                <Pressable
+                  accessibilityLabel={t("increaseRetention")}
+                  onPress={() => void changeRetention(0.01)}
+                  style={styles.algorithmButton}
+                >
+                  <Text style={styles.algorithmButtonLabel}>+</Text>
+                </Pressable>
+              </View>
             </View>
           ) : null}
           <Pressable
@@ -340,6 +461,50 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
           <Pressable onPress={() => void importData()} style={styles.button}>
             <Text style={styles.buttonLabel}>{t("importData")}</Text>
           </Pressable>
+          {pendingAudioCards ? (
+            <View style={styles.algorithmConfirm}>
+              <Text style={styles.algorithmDescription}>
+                {t("audiosPick", { count: pendingAudioCards.length })}
+              </Text>
+              <Pressable
+                onPress={() => void linkImportedAudio()}
+                style={styles.themeButton}
+              >
+                <Text style={styles.themeLabel}>{t("selectAudios")}</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setPendingAudioCards(null)}
+                style={styles.button}
+              >
+                <Text style={styles.buttonLabel}>{t("skipAudios")}</Text>
+              </Pressable>
+            </View>
+          ) : null}
+          <Pressable
+            onPress={() => setDeleteAllPending(true)}
+            style={styles.button}
+          >
+            <Text style={styles.buttonLabel}>{t("deleteAll")}</Text>
+          </Pressable>
+          {deleteAllPending ? (
+            <View style={styles.algorithmConfirm}>
+              <Text style={styles.algorithmDescription}>
+                {t("deleteAllDescription")}
+              </Text>
+              <Pressable
+                onPress={() => void handleDeleteAll()}
+                style={styles.themeButton}
+              >
+                <Text style={styles.themeLabel}>{t("confirmDeleteAll")}</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setDeleteAllPending(false)}
+                style={styles.button}
+              >
+                <Text style={styles.buttonLabel}>{t("cancel")}</Text>
+              </Pressable>
+            </View>
+          ) : null}
         </View>
         {isDevelopmentModeEnabled() ? (
           <View style={styles.panel}>

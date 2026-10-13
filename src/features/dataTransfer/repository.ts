@@ -17,6 +17,11 @@ interface DeckRow {
   sort_order: number;
 }
 
+function audioExtension(uri: string): string {
+  const match = /\.([a-zA-Z0-9]{1,5})$/.exec(uri);
+  return match ? `.${match[1].toLowerCase()}` : ".audio";
+}
+
 interface GroupRow {
   id: string;
   name: string;
@@ -30,6 +35,7 @@ interface CardRow {
   deck_id: string;
   front: string;
   back: string;
+  front_audio_uri: string | null;
   due_at: string;
   interval_days: number;
   ease_factor: number;
@@ -40,6 +46,8 @@ interface CardRow {
   fsrs_difficulty: number;
   fsrs_state: number;
   fsrs_lapses: number;
+  fsrs_learning_steps: number;
+  fsrs_last_review_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -59,7 +67,9 @@ interface ReviewRow {
 
 export function createDataTransferRepository(database: DataTransferDatabase) {
   return {
-    async exportData(): Promise<ExportCollections> {
+    async exportData(
+      readAudio?: (uri: string) => Promise<string | null>,
+    ): Promise<ExportCollections> {
       const [groups, decks, cards, reviews] = await Promise.all([
         database.getAllAsync<GroupRow>(
           `SELECT id, name, created_at, updated_at, sort_order
@@ -71,9 +81,10 @@ export function createDataTransferRepository(database: DataTransferDatabase) {
           [],
         ),
         database.getAllAsync<CardRow>(
-          `SELECT id, deck_id, front, back, due_at, interval_days,
+          `SELECT id, deck_id, front, back, front_audio_uri, due_at, interval_days,
               interval_minutes, ease_factor, repetitions, scheduler_algorithm,
               fsrs_stability, fsrs_difficulty, fsrs_state, fsrs_lapses,
+              fsrs_learning_steps, fsrs_last_review_at,
               created_at, updated_at
            FROM cards ORDER BY created_at ASC`,
           [],
@@ -86,6 +97,14 @@ export function createDataTransferRepository(database: DataTransferDatabase) {
           [],
         ),
       ]);
+
+      const audioData = await Promise.all(
+        cards.map((card) =>
+          card.front_audio_uri && readAudio
+            ? readAudio(card.front_audio_uri)
+            : Promise.resolve(null),
+        ),
+      );
 
       return {
         groups: groups.map((group) => ({
@@ -104,11 +123,15 @@ export function createDataTransferRepository(database: DataTransferDatabase) {
           groupId: deck.group_id,
           sortOrder: deck.sort_order,
         })),
-        cards: cards.map((card) => ({
+        cards: cards.map((card, index) => ({
           id: card.id,
           deckId: card.deck_id,
           front: card.front,
           back: card.back,
+          frontAudioFile: card.front_audio_uri
+            ? `${card.id}${audioExtension(card.front_audio_uri)}`
+            : null,
+          frontAudioData: audioData[index],
           dueAt: card.due_at,
           intervalDays: card.interval_days,
           easeFactor: card.ease_factor,
@@ -119,6 +142,8 @@ export function createDataTransferRepository(database: DataTransferDatabase) {
           fsrsDifficulty: card.fsrs_difficulty,
           fsrsState: card.fsrs_state,
           fsrsLapses: card.fsrs_lapses,
+          fsrsLearningSteps: card.fsrs_learning_steps,
+          fsrsLastReviewAt: card.fsrs_last_review_at,
           createdAt: card.created_at,
           updatedAt: card.updated_at,
         })),
@@ -135,6 +160,38 @@ export function createDataTransferRepository(database: DataTransferDatabase) {
           algorithmVersion: review.algorithm_version,
         })),
       };
+    },
+
+    /** Apaga baralhos, grupos, cartões e histórico; devolve os áudios a remover. */
+    async deleteAllData(): Promise<string[]> {
+      const audioRows = await database.getAllAsync<{
+        front_audio_uri: string | null;
+      }>(
+        "SELECT front_audio_uri FROM cards WHERE front_audio_uri IS NOT NULL",
+        [],
+      );
+      await database.execAsync("BEGIN");
+      try {
+        await database.execAsync("DELETE FROM review_history");
+        await database.execAsync("DELETE FROM cards");
+        await database.execAsync("DELETE FROM decks");
+        await database.execAsync("DELETE FROM deck_groups");
+        await database.execAsync("COMMIT");
+      } catch (error) {
+        await database.execAsync("ROLLBACK");
+        throw error;
+      }
+      return audioRows
+        .map((row) => row.front_audio_uri)
+        .filter((uri): uri is string => Boolean(uri));
+    },
+
+    async attachCardAudio(cardId: string, audioUri: string): Promise<void> {
+      await database.runAsync(
+        "UPDATE cards SET front_audio_uri = ? WHERE id = ?",
+        audioUri,
+        cardId,
+      );
     },
 
     async importData(data: ExportCollections): Promise<void> {
@@ -173,8 +230,9 @@ export function createDataTransferRepository(database: DataTransferDatabase) {
             `INSERT OR IGNORE INTO cards (
                id, deck_id, front, back, due_at, interval_days, interval_minutes,
                ease_factor, repetitions, scheduler_algorithm, fsrs_stability,
-               fsrs_difficulty, fsrs_state, fsrs_lapses, created_at, updated_at
-             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+               fsrs_difficulty, fsrs_state, fsrs_lapses, fsrs_learning_steps,
+               fsrs_last_review_at, created_at, updated_at
+             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             card.id,
             card.deckId,
             card.front,
@@ -189,6 +247,8 @@ export function createDataTransferRepository(database: DataTransferDatabase) {
             card.fsrsDifficulty ?? 0,
             card.fsrsState ?? 0,
             card.fsrsLapses ?? 0,
+            card.fsrsLearningSteps ?? 0,
+            card.fsrsLastReviewAt ?? null,
             card.createdAt,
             card.updatedAt,
           );

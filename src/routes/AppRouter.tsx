@@ -82,12 +82,25 @@ function HomeRoute({
   );
 }
 
+function useReloadOnFocus(): number {
+  const [reloadKey, setReloadKey] = useState(0);
+  useFocusEffect(
+    useCallback(() => {
+      setReloadKey((current) => current + 1);
+    }, []),
+  );
+  return reloadKey;
+}
+
 function DecksRoute({
   navigation,
   route,
 }: NativeStackScreenProps<RootStackParamList, "decks">) {
+  const reloadKey = useReloadOnFocus();
+
   return (
     <DecksScreen
+      reloadKey={reloadKey}
       onBack={() => navigation.goBack()}
       groupId={route.params?.groupId}
       onNavigate={(route) => navigateFromAppRoute(navigation, route)}
@@ -98,8 +111,11 @@ function DecksRoute({
 function GroupsRoute({
   navigation,
 }: NativeStackScreenProps<RootStackParamList, "groups">) {
+  const reloadKey = useReloadOnFocus();
+
   return (
     <GroupsScreen
+      reloadKey={reloadKey}
       onBack={() => navigation.navigate("home")}
       onNavigate={(route) => navigateFromAppRoute(navigation, route)}
     />
@@ -110,12 +126,7 @@ function CardsRoute({
   navigation,
   route,
 }: NativeStackScreenProps<RootStackParamList, "cards">) {
-  const [reloadKey, setReloadKey] = useState(0);
-  useFocusEffect(
-    useCallback(() => {
-      setReloadKey((current) => current + 1);
-    }, []),
-  );
+  const reloadKey = useReloadOnFocus();
 
   return (
     <CardsScreen

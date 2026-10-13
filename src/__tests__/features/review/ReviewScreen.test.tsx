@@ -45,7 +45,7 @@ describe("ReviewScreen", () => {
       expect.objectContaining({ justifyContent: "flex-start" }),
     );
     expect(screen.queryByText("Olá")).toBeNull();
-    fireEvent.press(screen.getByText("Mostrar resposta"));
+    fireEvent.press(screen.getByText("↻ Virar carta"));
     expect(screen.getByText("1m")).toBeTruthy();
     expect(screen.getAllByText("1d").length).toBe(3);
     expect(screen.getByText("Olá")).toBeTruthy();
@@ -104,7 +104,7 @@ describe("ReviewScreen", () => {
     );
 
     await waitFor(() => expect(screen.getByText("Intervalo")).toBeTruthy());
-    fireEvent.press(screen.getByText("Mostrar resposta"));
+    fireEvent.press(screen.getByText("↻ Virar carta"));
 
     expect(screen.getByText("24d")).toBeTruthy();
     expect(screen.getByText("25d")).toBeTruthy();
@@ -154,12 +154,111 @@ describe("ReviewScreen", () => {
     );
 
     await waitFor(() => expect(screen.getByText("Hello")).toBeTruthy());
-    fireEvent.press(screen.getByText("Mostrar resposta"));
+    fireEvent.press(screen.getByText("↻ Virar carta"));
     fireEvent.press(screen.getByText("Fácil"));
 
     await waitFor(() => {
       expect(screen.getByText("Goodbye")).toBeTruthy();
       expect(screen.getByText("Cartão 2 de 2")).toBeTruthy();
     });
+  });
+
+  it("flips the card to the answer and back to the question with its audio", async () => {
+    const database = {
+      getFirstAsync: jest.fn().mockResolvedValue(null),
+      runAsync: jest.fn().mockResolvedValue(undefined),
+      getAllAsync: jest.fn().mockResolvedValue([
+        {
+          id: "card-1",
+          deck_id: "deck-1",
+          front: "No problem, do you have your passport with you?",
+          back: "Sem problema, você está com seu passaporte?",
+          front_audio_uri: "file:///docs/card-audio/audio-1.mp3",
+          due_at: "2026-03-01T09:00:00.000Z",
+          interval_days: 0,
+          ease_factor: 2.5,
+          repetitions: 0,
+          created_at: "2026-02-01T10:00:00.000Z",
+          updated_at: "2026-02-01T10:00:00.000Z",
+        },
+      ]),
+    };
+    jest.mocked(useSQLiteContext).mockReturnValue(database as never);
+
+    const screen = render(
+      <ThemeProvider mode="light">
+        <ReviewScreen
+          onBack={jest.fn()}
+          now={new Date("2026-03-01T10:00:00.000Z")}
+        />
+      </ThemeProvider>,
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.getByText("No problem, do you have your passport with you?"),
+      ).toBeTruthy(),
+    );
+    expect(screen.getByText("▶ Tocar áudio")).toBeTruthy();
+    expect(screen.queryByText("Fácil")).toBeNull();
+
+    fireEvent.press(screen.getByText("↻ Virar carta"));
+    expect(
+      screen.getByText("Sem problema, você está com seu passaporte?"),
+    ).toBeTruthy();
+    expect(screen.queryByText("▶ Tocar áudio")).toBeNull();
+    expect(
+      screen.queryByText("No problem, do you have your passport with you?"),
+    ).toBeNull();
+    expect(screen.getByText("Fácil")).toBeTruthy();
+
+    fireEvent.press(screen.getByText("↻ Virar carta"));
+    expect(
+      screen.getByText("No problem, do you have your passport with you?"),
+    ).toBeTruthy();
+    expect(screen.getByText("▶ Tocar áudio")).toBeTruthy();
+    expect(
+      screen.queryByText("Sem problema, você está com seu passaporte?"),
+    ).toBeNull();
+    expect(screen.queryByText("Fácil")).toBeNull();
+    expect(database.runAsync).not.toHaveBeenCalledWith(
+      expect.stringContaining("INSERT INTO review_history"),
+      expect.anything(),
+    );
+  });
+
+  it("does not show an audio button for cards without audio", async () => {
+    const database = {
+      getFirstAsync: jest.fn().mockResolvedValue(null),
+      runAsync: jest.fn().mockResolvedValue(undefined),
+      getAllAsync: jest.fn().mockResolvedValue([
+        {
+          id: "card-1",
+          deck_id: "deck-1",
+          front: "Hello",
+          back: "Olá",
+          front_audio_uri: null,
+          due_at: "2026-03-01T09:00:00.000Z",
+          interval_days: 0,
+          ease_factor: 2.5,
+          repetitions: 0,
+          created_at: "2026-02-01T10:00:00.000Z",
+          updated_at: "2026-02-01T10:00:00.000Z",
+        },
+      ]),
+    };
+    jest.mocked(useSQLiteContext).mockReturnValue(database as never);
+
+    const screen = render(
+      <ThemeProvider mode="light">
+        <ReviewScreen
+          onBack={jest.fn()}
+          now={new Date("2026-03-01T10:00:00.000Z")}
+        />
+      </ThemeProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByText("Hello")).toBeTruthy());
+    expect(screen.queryByText("▶ Tocar áudio")).toBeNull();
   });
 });

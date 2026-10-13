@@ -67,7 +67,48 @@ describe("CardsScreen", () => {
     );
 
     await waitFor(() => expect(screen.getByText("Hello")).toBeTruthy());
+    expect(screen.queryByText("Editar")).toBeNull();
+    fireEvent.press(screen.getByTestId("card-menu-card-1"));
     fireEvent.press(screen.getByText("Editar"));
+    await waitFor(() =>
+      expect(onEditCard).toHaveBeenCalledWith(
+        expect.objectContaining({ id: "card-1" }),
+      ),
+    );
+  });
+
+  it("opens the card for editing when the card is pressed", async () => {
+    const database = {
+      runAsync: jest.fn().mockResolvedValue(undefined),
+      getAllAsync: jest.fn().mockResolvedValue([
+        {
+          id: "card-1",
+          deck_id: "deck-1",
+          front: "Hello",
+          back: "Olá",
+          front_audio_uri: "file:///docs/card-audio/audio-1.mp3",
+          due_at: "2026-02-01T10:00:00.000Z",
+          interval_days: 0,
+          ease_factor: 2.5,
+          repetitions: 0,
+          created_at: "2026-02-01T10:00:00.000Z",
+          updated_at: "2026-02-01T10:00:00.000Z",
+        },
+      ]),
+    };
+    jest.mocked(useSQLiteContext).mockReturnValue(database as never);
+    const onEditCard = jest.fn();
+
+    const screen = render(
+      <ThemeProvider mode="light">
+        <CardsScreen deck={deck} onBack={jest.fn()} onEditCard={onEditCard} />
+      </ThemeProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByText("Hello")).toBeTruthy());
+    expect(screen.getByText("🔊 Áudio anexado à pergunta")).toBeTruthy();
+    fireEvent.press(screen.getByText("Hello"));
+
     expect(onEditCard).toHaveBeenCalledWith(
       expect.objectContaining({ id: "card-1" }),
     );
@@ -100,9 +141,12 @@ describe("CardsScreen", () => {
     );
 
     await waitFor(() => expect(screen.getByText("Hello")).toBeTruthy());
+    fireEvent.press(screen.getByTestId("card-menu-card-1"));
     fireEvent.press(screen.getByText("Excluir"));
 
-    expect(screen.getByText("Excluir este cartão?")).toBeTruthy();
+    await waitFor(() =>
+      expect(screen.getByText("Excluir este cartão?")).toBeTruthy(),
+    );
     fireEvent.press(screen.getByText("Confirmar exclusão"));
 
     await waitFor(() => {
@@ -141,9 +185,12 @@ describe("CardsScreen", () => {
     );
 
     await waitFor(() => expect(screen.getByText("Hello")).toBeTruthy());
+    fireEvent.press(screen.getByTestId("card-menu-card-1"));
     fireEvent.press(screen.getByText("Mover"));
-    expect(onMoveCard).toHaveBeenCalledWith(
-      expect.objectContaining({ id: "card-1" }),
+    await waitFor(() =>
+      expect(onMoveCard).toHaveBeenCalledWith(
+        expect.objectContaining({ id: "card-1" }),
+      ),
     );
   });
 

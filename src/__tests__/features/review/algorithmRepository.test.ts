@@ -36,4 +36,25 @@ describe("algorithm repository", () => {
     );
     expect(database.runAsync.mock.calls[0][0]).not.toContain("review_history");
   });
+
+  it("defaults, clamps and persists desired retention", async () => {
+    const database = {
+      getFirstAsync: jest
+        .fn()
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({ value: "0.99" }),
+      runAsync: jest.fn().mockResolvedValue(undefined),
+    };
+    const repository = createAlgorithmRepository(database);
+
+    await expect(repository.getDesiredRetention()).resolves.toBe(0.9);
+    await expect(repository.getDesiredRetention()).resolves.toBe(0.97);
+    await repository.setDesiredRetention(0.5);
+
+    expect(database.runAsync).toHaveBeenCalledWith(
+      expect.stringContaining("INSERT INTO app_state"),
+      "fsrs_desired_retention",
+      "0.7",
+    );
+  });
 });

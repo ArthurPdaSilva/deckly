@@ -32,6 +32,7 @@ export async function createFlashcard(
     deckId,
     front,
     back,
+    frontAudioUri: input.frontAudioUri ?? null,
     dueAt: timestamp,
     intervalDays: 0,
     easeFactor: 2.5,
@@ -72,6 +73,10 @@ export async function updateFlashcard(
     ...currentCard,
     front,
     back,
+    frontAudioUri:
+      input.frontAudioUri === undefined
+        ? (currentCard.frontAudioUri ?? null)
+        : input.frontAudioUri,
     updatedAt: updatedAt.toISOString(),
   };
 

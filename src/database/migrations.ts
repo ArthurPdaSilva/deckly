@@ -76,6 +76,17 @@ export const MIGRATIONS: readonly DatabaseMigration[] = [
       "ALTER TABLE decks ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0",
     ],
   },
+  {
+    version: 4,
+    statements: ["ALTER TABLE cards ADD COLUMN front_audio_uri TEXT"],
+  },
+  {
+    version: 5,
+    statements: [
+      "ALTER TABLE cards ADD COLUMN fsrs_learning_steps INTEGER NOT NULL DEFAULT 0",
+      "ALTER TABLE cards ADD COLUMN fsrs_last_review_at TEXT",
+    ],
+  },
 ];
 
 export function getPendingMigrations(

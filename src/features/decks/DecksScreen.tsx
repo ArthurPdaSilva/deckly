@@ -3,10 +3,12 @@ import { useEffect, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { AnimatedScreen } from "../../components/AnimatedScreen";
 import { ConfirmModal } from "../../components/ConfirmModal";
+import { ItemActionsMenu } from "../../components/ItemActionsMenu";
 import { notify } from "../../components/notifications";
 import type { AppRoute } from "../../routes/types";
 import { useLanguage } from "../../styles/LanguageProvider";
 import { useTheme } from "../../styles/ThemeProvider";
+import { deleteAudioFile } from "../cards/audioStorage";
 import {
   createReviewRepository,
   type DeckReviewSummary,
@@ -22,6 +24,7 @@ interface DecksScreenProps {
   onNavigate?: (route: AppRoute) => void;
   onBack?: () => void;
   groupId?: string | null;
+  reloadKey?: number;
 }
 
 type DeckListItem = { type: "deck"; deck: Deck };
@@ -30,6 +33,7 @@ export function DecksScreen({
   onNavigate = () => undefined,
   onBack,
   groupId,
+  reloadKey = 0,
 }: DecksScreenProps) {
   const database = useSQLiteContext();
   const { theme } = useTheme();
@@ -42,6 +46,7 @@ export function DecksScreen({
     [],
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reloadKey forces a reload when the screen regains focus
   useEffect(() => {
     let mounted = true;
     const repository = createDeckRepository(database);
@@ -74,7 +79,7 @@ export function DecksScreen({
     return () => {
       mounted = false;
     };
-  }, [database, groupId]);
+  }, [database, groupId, reloadKey]);
 
   function getReviewSummary(deckId: string) {
     return reviewSummaries.find((summary) => summary.deckId === deckId);
@@ -92,7 +97,16 @@ export function DecksScreen({
     }
 
     const repository = createDeckRepository(database);
+    const audioRows = await database.getAllAsync<{
+      front_audio_uri: string | null;
+    }>(
+      "SELECT front_audio_uri FROM cards WHERE deck_id = ? AND front_audio_uri IS NOT NULL",
+      [deckPendingDelete.id],
+    );
     await deleteDeck(repository, deckPendingDelete.id);
+    await Promise.all(
+      audioRows.map((row) => deleteAudioFile(row.front_audio_uri)),
+    );
     setDecks((currentDecks) =>
       currentDecks.filter((deck) => deck.id !== deckPendingDelete.id),
     );
@@ -285,7 +299,25 @@ export function DecksScreen({
       backgroundColor: theme.colors.surfaceElevated,
       borderRadius: 20,
       marginTop: theme.spacing.sm,
+    },
+    deckContent: {
+      borderRadius: 20,
       padding: theme.spacing.lg,
+      paddingRight: 56,
+    },
+    menu: {
+      position: "absolute",
+      right: theme.spacing.sm,
+      top: theme.spacing.sm,
+    },
+    reviewChip: {
+      alignSelf: "flex-start",
+      borderColor: theme.colors.success,
+      borderRadius: 999,
+      borderWidth: 1,
+      marginTop: theme.spacing.md,
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: theme.spacing.xs,
     },
     groupHeader: {
       backgroundColor: theme.colors.primaryMuted,
@@ -324,21 +356,8 @@ export function DecksScreen({
       fontSize: theme.typography.bodySmall,
       marginTop: theme.spacing.sm,
     },
-    actionRow: {
-      flexDirection: "row",
-      gap: theme.spacing.lg,
-      marginTop: theme.spacing.md,
-    },
-    editAction: {
-      color: theme.colors.primary,
-      fontWeight: "700",
-    },
     reviewAction: {
       color: theme.colors.success,
-      fontWeight: "700",
-    },
-    deleteAction: {
-      color: theme.colors.danger,
       fontWeight: "700",
     },
   });
@@ -388,65 +407,70 @@ export function DecksScreen({
               <Text style={styles.empty}>{t("noDecks")}</Text>
             }
             renderItem={({ item }) => (
-              <Pressable
-                testID={`deck-${item.deck.id}`}
-                onPress={() => onNavigate({ name: "cards", deck: item.deck })}
-                style={({ pressed }) => [
-                  styles.deck,
-                  pressed && styles.deckPressed,
-                ]}
-              >
-                <Text style={styles.deckName}>{item.deck.name}</Text>
-                {item.deck.description ? (
-                  <Text style={styles.deckDescription}>
-                    {item.deck.description}
+              <View style={styles.deck}>
+                <Pressable
+                  accessibilityRole="button"
+                  testID={`deck-${item.deck.id}`}
+                  onPress={() => onNavigate({ name: "cards", deck: item.deck })}
+                  style={({ pressed }) => [
+                    styles.deckContent,
+                    pressed && styles.deckPressed,
+                  ]}
+                >
+                  <Text style={styles.deckName}>{item.deck.name}</Text>
+                  {item.deck.description ? (
+                    <Text style={styles.deckDescription}>
+                      {item.deck.description}
+                    </Text>
+                  ) : null}
+                  <Text style={styles.reviewSummary}>
+                    {(() => {
+                      const summary = getReviewSummary(item.deck.id);
+                      if (!summary) return t("noCards");
+                      return t("nextReview", {
+                        count: summary.dueCount,
+                        time: summary.nextDueAt
+                          ? formatTimeUntil(
+                              summary.nextDueAt,
+                              new Date(),
+                              language,
+                            )
+                          : language === "en"
+                            ? "no date"
+                            : "sem data",
+                      });
+                    })()}
                   </Text>
-                ) : null}
-                <Text style={styles.reviewSummary}>
-                  {(() => {
-                    const summary = getReviewSummary(item.deck.id);
-                    if (!summary) return t("noCards");
-                    return t("nextReview", {
-                      count: summary.dueCount,
-                      time: summary.nextDueAt
-                        ? formatTimeUntil(
-                            summary.nextDueAt,
-                            new Date(),
-                            language,
-                          )
-                        : language === "en"
-                          ? "no date"
-                          : "sem data",
-                    });
-                  })()}
-                </Text>
-                <View style={styles.actionRow}>
                   <Pressable
+                    accessibilityRole="button"
                     onPress={(event) => {
                       event?.stopPropagation?.();
                       onNavigate({ name: "review", deck: item.deck });
                     }}
+                    style={styles.reviewChip}
                   >
                     <Text style={styles.reviewAction}>{t("review")}</Text>
                   </Pressable>
-                  <Pressable
-                    onPress={(event) => {
-                      event?.stopPropagation?.();
-                      onNavigate({ name: "deckForm", deck: item.deck });
-                    }}
-                  >
-                    <Text style={styles.editAction}>{t("edit")}</Text>
-                  </Pressable>
-                  <Pressable
-                    onPress={(event) => {
-                      event?.stopPropagation?.();
-                      setDeckPendingDelete(item.deck);
-                    }}
-                  >
-                    <Text style={styles.deleteAction}>{t("delete")}</Text>
-                  </Pressable>
+                </Pressable>
+                <View style={styles.menu}>
+                  <ItemActionsMenu
+                    actions={[
+                      {
+                        label: t("edit"),
+                        onPress: () =>
+                          onNavigate({ name: "deckForm", deck: item.deck }),
+                      },
+                      {
+                        label: t("delete"),
+                        destructive: true,
+                        onPress: () => setDeckPendingDelete(item.deck),
+                      },
+                    ]}
+                    testID={`deck-menu-${item.deck.id}`}
+                    title={item.deck.name}
+                  />
                 </View>
-              </Pressable>
+              </View>
             )}
           />
         )}

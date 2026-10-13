@@ -27,9 +27,9 @@ function createEmptyDistribution(): RatingDistribution {
 
 function getDayBoundaries(now: Date): [string, string] {
   const start = new Date(now);
-  start.setUTCHours(0, 0, 0, 0);
+  start.setHours(0, 0, 0, 0);
   const end = new Date(start);
-  end.setUTCDate(end.getUTCDate() + 1);
+  end.setDate(end.getDate() + 1);
   return [start.toISOString(), end.toISOString()];
 }
 

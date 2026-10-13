@@ -12,14 +12,21 @@ import { AnimatedScreen } from "../../components/AnimatedScreen";
 import { notify } from "../../components/notifications";
 import { useLanguage } from "../../styles/LanguageProvider";
 import { useTheme } from "../../styles/ThemeProvider";
+import { AudioPlayButton } from "../cards/AudioPlayButton";
 import type { Flashcard } from "../cards/domain/flashcard";
 import type { Deck } from "../decks/domain/deck";
 import type { DeckGroup } from "../decks/domain/deckGroup";
-import { createAlgorithmRepository } from "./algorithmRepository";
+import {
+  createAlgorithmRepository,
+  DEFAULT_RETENTION,
+} from "./algorithmRepository";
 import type { ReviewRating } from "./domain/scheduler";
 import { createReviewRepository } from "./repository";
 import { createScheduler } from "./schedulerFactory";
 import { formatCompactReviewInterval } from "./time";
+
+// Cards whose next review falls within this window return to the same session.
+const REQUEUE_WINDOW_MS = 20 * 60_000;
 
 interface ReviewScreenProps {
   deck?: Deck;
@@ -28,20 +35,17 @@ interface ReviewScreenProps {
   onBack: () => void;
 }
 
-export function ReviewScreen({
-  deck,
-  group,
-  now = new Date(),
-  onBack,
-}: ReviewScreenProps) {
+export function ReviewScreen({ deck, group, now, onBack }: ReviewScreenProps) {
   const database = useSQLiteContext();
   const { theme } = useTheme();
   const { language, t } = useLanguage();
   const [sessionNow] = useState(() => now ?? new Date());
+  const [retention, setRetention] = useState(DEFAULT_RETENTION);
+  const [shownAt, setShownAt] = useState(() => now ?? new Date());
   const [cards, setCards] = useState<Flashcard[]>([]);
   const [totalCards, setTotalCards] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  const [showAnswer, setShowAnswer] = useState(false);
+  const [isFlipped, setIsFlipped] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [algorithm, setAlgorithm] = useState<"sm-2" | "fsrs">("sm-2");
   const deckId = deck?.id;
@@ -58,11 +62,13 @@ export function ReviewScreen({
     void Promise.all([
       cardsPromise,
       createAlgorithmRepository(database).getActiveAlgorithm(),
-    ]).then(([dueCards, activeAlgorithm]) => {
+      createAlgorithmRepository(database).getDesiredRetention(),
+    ]).then(([dueCards, activeAlgorithm, desiredRetention]) => {
       if (mounted) {
         setCards(dueCards);
         setTotalCards(dueCards.length);
         setAlgorithm(activeAlgorithm);
+        setRetention(desiredRetention);
         setIsLoading(false);
       }
     });
@@ -80,7 +86,8 @@ export function ReviewScreen({
 
     setIsSaving(true);
     try {
-      const result = createScheduler(algorithm).schedule(
+      const reviewedAt = now ?? new Date();
+      const result = createScheduler(algorithm, { retention }).schedule(
         {
           dueAt: card.dueAt,
           intervalDays: card.intervalDays,
@@ -92,9 +99,11 @@ export function ReviewScreen({
           fsrsDifficulty: card.fsrsDifficulty,
           fsrsState: card.fsrsState,
           fsrsLapses: card.fsrsLapses,
+          fsrsLearningSteps: card.fsrsLearningSteps,
+          fsrsLastReviewAt: card.fsrsLastReviewAt,
         },
         rating,
-        sessionNow,
+        reviewedAt,
       );
       await createReviewRepository(database).recordReview(
         card.id,
@@ -102,8 +111,36 @@ export function ReviewScreen({
         result.nextState,
         result.review,
       );
-      setCards((currentCards) => currentCards.slice(1));
-      setShowAnswer(false);
+      const dueInMs =
+        new Date(result.nextState.dueAt).getTime() - reviewedAt.getTime();
+      setCards((currentCards) => {
+        const remaining = currentCards.slice(1);
+        // Sem outros cartões na fila, o cartão espera pela próxima sessão
+        // em vez de reaparecer imediatamente.
+        if (dueInMs > REQUEUE_WINDOW_MS || remaining.length === 0) {
+          return remaining;
+        }
+        return [
+          ...remaining,
+          {
+            ...card,
+            dueAt: result.nextState.dueAt,
+            intervalDays: result.nextState.intervalDays,
+            intervalMinutes: result.nextState.intervalMinutes,
+            easeFactor: result.nextState.easeFactor,
+            repetitions: result.nextState.repetitions,
+            schedulerAlgorithm: result.nextState.schedulerAlgorithm,
+            fsrsStability: result.nextState.fsrsStability,
+            fsrsDifficulty: result.nextState.fsrsDifficulty,
+            fsrsState: result.nextState.fsrsState,
+            fsrsLapses: result.nextState.fsrsLapses,
+            fsrsLearningSteps: result.nextState.fsrsLearningSteps,
+            fsrsLastReviewAt: result.nextState.fsrsLastReviewAt,
+          },
+        ];
+      });
+      setShownAt(now ?? new Date());
+      setIsFlipped(false);
       notify.success(t("reviewRegistered"));
     } catch (cause) {
       notify.error(cause instanceof Error ? cause.message : t("reviewError"));
@@ -190,12 +227,6 @@ export function ReviewScreen({
       fontSize: 24,
       lineHeight: 32,
       marginTop: theme.spacing.md,
-    },
-    divider: {
-      borderColor: theme.colors.border,
-      borderTopWidth: 1,
-      marginTop: theme.spacing.xl,
-      paddingTop: theme.spacing.xl,
     },
     reveal: {
       alignItems: "center",
@@ -360,93 +391,106 @@ export function ReviewScreen({
                 />
               </View>
               <AnimatedReviewCard key={currentCard.id}>
-                <View style={styles.card}>
-                  <Text style={styles.label}>{t("front")}</Text>
-                  <Text style={styles.content}>{currentCard.front}</Text>
-                  {showAnswer ? (
-                    <View style={styles.divider}>
-                      <Text style={styles.label}>{t("backSide")}</Text>
-                      <Text style={styles.content}>{currentCard.back}</Text>
-                    </View>
-                  ) : (
+                <FlipTransition flipped={isFlipped}>
+                  <View style={styles.card}>
+                    {isFlipped ? (
+                      <>
+                        <Text style={styles.label}>{t("backSide")}</Text>
+                        <Text style={styles.content}>{currentCard.back}</Text>
+                      </>
+                    ) : (
+                      <>
+                        <Text style={styles.label}>{t("front")}</Text>
+                        <Text style={styles.content}>{currentCard.front}</Text>
+                        {currentCard.frontAudioUri ? (
+                          <AudioPlayButton uri={currentCard.frontAudioUri} />
+                        ) : null}
+                      </>
+                    )}
                     <Pressable
-                      onPress={() => setShowAnswer(true)}
+                      accessibilityRole="button"
+                      onPress={() => setIsFlipped((current) => !current)}
                       style={({ pressed }) => [
                         styles.reveal,
                         pressed && styles.controlPressed,
                       ]}
                     >
-                      <Text style={styles.revealLabel}>{t("showAnswer")}</Text>
+                      <Text style={styles.revealLabel}>
+                        {`↻ ${t("flipCard")}`}
+                      </Text>
                     </Pressable>
-                  )}
-                  {showAnswer ? (
-                    <View style={styles.ratings}>
-                      {[
-                        {
-                          label: t("again"),
-                          rating: 2 as const,
-                          color: theme.colors.ratingAgain,
-                        },
-                        {
-                          label: t("hard"),
-                          rating: 3 as const,
-                          color: theme.colors.ratingHard,
-                        },
-                        {
-                          label: t("good"),
-                          rating: 4 as const,
-                          color: theme.colors.ratingGood,
-                        },
-                        {
-                          label: t("easy"),
-                          rating: 5 as const,
-                          color: theme.colors.ratingEasy,
-                        },
-                      ].map((option) => {
-                        const preview = createScheduler(algorithm).schedule(
+                    {isFlipped ? (
+                      <View style={styles.ratings}>
+                        {[
                           {
-                            dueAt: currentCard.dueAt,
-                            intervalDays: currentCard.intervalDays,
-                            easeFactor: currentCard.easeFactor,
-                            repetitions: currentCard.repetitions,
-                            intervalMinutes: currentCard.intervalMinutes,
-                            schedulerAlgorithm: currentCard.schedulerAlgorithm,
-                            fsrsStability: currentCard.fsrsStability,
-                            fsrsDifficulty: currentCard.fsrsDifficulty,
-                            fsrsState: currentCard.fsrsState,
-                            fsrsLapses: currentCard.fsrsLapses,
+                            label: t("again"),
+                            rating: 2 as const,
+                            color: theme.colors.ratingAgain,
                           },
-                          option.rating,
-                          sessionNow,
-                        );
+                          {
+                            label: t("hard"),
+                            rating: 3 as const,
+                            color: theme.colors.ratingHard,
+                          },
+                          {
+                            label: t("good"),
+                            rating: 4 as const,
+                            color: theme.colors.ratingGood,
+                          },
+                          {
+                            label: t("easy"),
+                            rating: 5 as const,
+                            color: theme.colors.ratingEasy,
+                          },
+                        ].map((option) => {
+                          const preview = createScheduler(algorithm, {
+                            retention,
+                          }).schedule(
+                            {
+                              dueAt: currentCard.dueAt,
+                              intervalDays: currentCard.intervalDays,
+                              easeFactor: currentCard.easeFactor,
+                              repetitions: currentCard.repetitions,
+                              intervalMinutes: currentCard.intervalMinutes,
+                              schedulerAlgorithm:
+                                currentCard.schedulerAlgorithm,
+                              fsrsStability: currentCard.fsrsStability,
+                              fsrsDifficulty: currentCard.fsrsDifficulty,
+                              fsrsState: currentCard.fsrsState,
+                              fsrsLapses: currentCard.fsrsLapses,
+                            },
+                            option.rating,
+                            shownAt,
+                          );
 
-                        return (
-                          <Pressable
-                            key={option.label}
-                            onPress={() => void handleRate(option.rating)}
-                            style={({ pressed }) => [
-                              styles.rating,
-                              { backgroundColor: option.color },
-                              pressed && styles.controlPressed,
-                            ]}
-                          >
-                            <View style={styles.ratingContent}>
-                              <Text style={styles.ratingLabel}>
-                                {option.label}
-                              </Text>
-                              <Text style={styles.ratingInterval}>
-                                {formatCompactReviewInterval(
-                                  preview.nextState.intervalMinutes ??
-                                    preview.nextState.intervalDays * 1440,
-                                )}
-                              </Text>
-                            </View>
-                          </Pressable>
-                        );
-                      })}
-                    </View>
-                  ) : null}
-                </View>
+                          return (
+                            <Pressable
+                              key={option.label}
+                              onPress={() => void handleRate(option.rating)}
+                              style={({ pressed }) => [
+                                styles.rating,
+                                { backgroundColor: option.color },
+                                pressed && styles.controlPressed,
+                              ]}
+                            >
+                              <View style={styles.ratingContent}>
+                                <Text style={styles.ratingLabel}>
+                                  {option.label}
+                                </Text>
+                                <Text style={styles.ratingInterval}>
+                                  {formatCompactReviewInterval(
+                                    preview.nextState.intervalMinutes ??
+                                      preview.nextState.intervalDays * 1440,
+                                  )}
+                                </Text>
+                              </View>
+                            </Pressable>
+                          );
+                        })}
+                      </View>
+                    ) : null}
+                  </View>
+                </FlipTransition>
               </AnimatedReviewCard>
             </>
           ) : totalCards > 0 ? (
@@ -513,6 +557,44 @@ function AnimatedReviewCard({ children }: AnimatedReviewCardProps) {
 
   return (
     <Animated.View style={{ opacity, transform: [{ translateX }] }}>
+      {children}
+    </Animated.View>
+  );
+}
+
+interface FlipTransitionProps extends PropsWithChildren {
+  flipped: boolean;
+}
+
+function FlipTransition({ flipped, children }: FlipTransitionProps) {
+  const progress = useRef(new Animated.Value(1)).current;
+  const isFirstRender = useRef(true);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: flipped is the trigger that restarts the flip animation
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+
+    progress.setValue(0);
+    const animation = Animated.timing(progress, {
+      duration: 260,
+      toValue: 1,
+      useNativeDriver: true,
+    });
+    animation.start();
+
+    return () => animation.stop();
+  }, [flipped, progress]);
+
+  const rotateY = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["90deg", "0deg"],
+  });
+
+  return (
+    <Animated.View style={{ transform: [{ perspective: 1000 }, { rotateY }] }}>
       {children}
     </Animated.View>
   );
