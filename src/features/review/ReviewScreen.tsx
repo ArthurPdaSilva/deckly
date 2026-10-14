@@ -4,6 +4,7 @@ import {
   ActivityIndicator,
   Animated,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -161,8 +162,11 @@ export function ReviewScreen({ deck, group, now, onBack }: ReviewScreenProps) {
       fontWeight: "700",
       marginBottom: theme.spacing.xl,
     },
-    sessionContent: {
+    scroll: {
       flex: 1,
+    },
+    sessionContent: {
+      flexGrow: 1,
       justifyContent: "flex-start",
       paddingBottom: theme.spacing.xl,
     },
@@ -346,7 +350,13 @@ export function ReviewScreen({ deck, group, now, onBack }: ReviewScreenProps) {
         <Pressable onPress={onBack}>
           <Text style={styles.back}>{t("back")}</Text>
         </Pressable>
-        <View testID="review-content" style={styles.sessionContent}>
+        <ScrollView
+          contentContainerStyle={styles.sessionContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          style={styles.scroll}
+          testID="review-content"
+        >
           <Text style={styles.eyebrow}>
             {deck
               ? `REVISÃO • ${deck.name.toUpperCase()}`
@@ -522,7 +532,7 @@ export function ReviewScreen({ deck, group, now, onBack }: ReviewScreenProps) {
           ) : (
             <Text style={styles.empty}>{t("allReviewed")}</Text>
           )}
-        </View>
+        </ScrollView>
       </View>
     </AnimatedScreen>
   );

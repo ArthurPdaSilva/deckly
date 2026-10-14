@@ -8,15 +8,17 @@ import { useTheme } from "../../styles/ThemeProvider";
 import { createReviewRepository } from "../review/repository";
 
 interface HomeScreenProps {
+  reloadKey?: number;
   onNavigate: (route: AppRoute) => void;
 }
 
-export function HomeScreen({ onNavigate }: HomeScreenProps) {
+export function HomeScreen({ onNavigate, reloadKey = 0 }: HomeScreenProps) {
   const database = useSQLiteContext();
   const { theme } = useTheme();
   const { t } = useLanguage();
   const [dueCount, setDueCount] = useState(0);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reloadKey recarrega a contagem quando a tela volta ao foco
   useEffect(() => {
     let mounted = true;
     void createReviewRepository(database)
@@ -30,7 +32,7 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
     return () => {
       mounted = false;
     };
-  }, [database]);
+  }, [database, reloadKey]);
 
   const styles = StyleSheet.create({
     container: {

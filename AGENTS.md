@@ -98,3 +98,7 @@ Toda mudança de comportamento deve atualizar o `README.md` quando afetar escopo
 - Não enviar conteúdo para serviços externos na primeira versão.
 - Não registrar conteúdo de cartões em logs de produção.
 - Validar migrations com dados representativos antes de alterar o schema local.
+
+## Formato de importação JSON
+
+O esqueleto completo (grupo → baralho → cartões, campos obrigatórios e áudio) está documentado no `README.md`, na seção "Formato do JSON de importação". Ao gerar arquivos de importação, siga-o e valide com `src/features/dataTransfer/format.ts`.

@@ -130,7 +130,67 @@ Na tela **Configurações**, os botões **Exportar dados** e **Importar dados** 
 
 Um cartão pode ter um áudio anexado à pergunta (frente). A migration 4 adiciona a coluna opcional `cards.front_audio_uri`, sem alterar cartões existentes. Ao salvar o cartão, o arquivo escolhido é copiado para `card-audio/` dentro do diretório de documentos do app e removido quando o áudio é trocado ou retirado, ou quando o cartão é excluído. Na revisão, o botão **Tocar áudio** aparece na frente do cartão.
 
-Limitação atual: a exportação JSON guarda apenas dados de texto e agendamento; os arquivos de áudio não são incluídos no arquivo exportado.
+A exportação embute o áudio de cada cartão em base64 (`frontAudioData`), e a importação o restaura e vincula ao cartão. O arquivo fica maior quanto mais áudio existir.
+
+### Formato do JSON de importação (grupo → baralho → cartões)
+
+Esqueleto mínimo. Os IDs são livres, mas precisam ser únicos e estáveis: a importação faz `INSERT OR IGNORE` por ID, então um ID já existente é ignorado e um novo ID com o mesmo nome cria um registro duplicado.
+
+```json
+{
+  "format": "deckly",
+  "version": 1,
+  "exportedAt": "2026-10-13T18:50:00.000Z",
+  "groups": [
+    {
+      "id": "group-fluency-academy",
+      "name": "Fluency Academy",
+      "createdAt": "2026-10-13T18:50:00.000Z",
+      "updatedAt": "2026-10-13T18:50:00.000Z",
+      "sortOrder": 0
+    }
+  ],
+  "decks": [
+    {
+      "id": "deck-unit01-airport",
+      "name": "Unit 01 – Checking in at the airport",
+      "description": "Frases e expressões da aula",
+      "groupId": "group-fluency-academy",
+      "sortOrder": 0,
+      "createdAt": "2026-10-13T18:50:00.000Z",
+      "updatedAt": "2026-10-13T18:50:00.000Z"
+    }
+  ],
+  "cards": [
+    {
+      "id": "unit01-frase-01",
+      "deckId": "deck-unit01-airport",
+      "front": "Hi, I would like to check in to my flight to L.A.",
+      "back": "Oi, eu gostaria de fazer o check-in para o meu voo para Los Angeles.",
+      "frontAudioFile": "unit01-frase-01.mp3",
+      "dueAt": "2026-10-13T18:50:00.000Z",
+      "intervalDays": 0,
+      "intervalMinutes": 0,
+      "easeFactor": 2.5,
+      "repetitions": 0,
+      "schedulerAlgorithm": "fsrs",
+      "createdAt": "2026-10-13T18:50:00.000Z",
+      "updatedAt": "2026-10-13T18:50:00.000Z"
+    }
+  ],
+  "reviews": []
+}
+```
+
+Regras de validação (`src/features/dataTransfer/format.ts`):
+
+- **Obrigatórios no grupo:** `id`, `name`, `createdAt`, `updatedAt`, `sortOrder` (número). `groups` é opcional.
+- **Obrigatórios no baralho:** `id`, `name`, `description`, `createdAt`, `updatedAt`. `groupId` (ID de um grupo) e `sortOrder` são opcionais; sem `groupId` o baralho fica fora de grupos.
+- **Obrigatórios no cartão:** `id`, `deckId` (ID de um baralho), `front`, `back`, `dueAt`, `intervalDays`, `easeFactor`, `repetitions`, `createdAt`, `updatedAt`. Datas em ISO 8601 (UTC).
+- **Cartão novo:** `dueAt` igual ou anterior a agora, `intervalDays: 0`, `easeFactor: 2.5`, `repetitions: 0`. Os campos `fsrs*` podem ser omitidos (assumem 0/nulo).
+- **Opcionais no cartão:** `intervalMinutes`, `schedulerAlgorithm` (`"sm-2"` ou `"fsrs"`), `fsrsStability`, `fsrsDifficulty`, `fsrsState`, `fsrsLapses`, `fsrsLearningSteps`, `fsrsLastReviewAt`.
+- **Áudio:** `frontAudioFile` (nome do arquivo) sem `frontAudioData` faz o app abrir, após a importação, um painel para escolher os arquivos de áudio, que são vinculados pelo nome (sem diferenciar maiúsculas). Com `frontAudioData` (base64), o áudio é restaurado sozinho.
+- **Histórico:** `reviews` é obrigatório (pode ser `[]`).
 
 ### Navegação e ações nas listas
 
