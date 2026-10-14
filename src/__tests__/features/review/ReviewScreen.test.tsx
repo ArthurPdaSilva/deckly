@@ -41,9 +41,9 @@ describe("ReviewScreen", () => {
     await waitFor(() => expect(screen.getByText("Hello")).toBeTruthy());
     expect(screen.getByText("Cartão 1 de 1")).toBeTruthy();
     expect(screen.getByTestId("review-progress-fill")).toBeTruthy();
-    expect(screen.getByTestId("review-content").props.style).toEqual(
-      expect.objectContaining({ justifyContent: "flex-start" }),
-    );
+    expect(
+      screen.getByTestId("review-content").props.contentContainerStyle,
+    ).toEqual(expect.objectContaining({ justifyContent: "flex-start" }));
     expect(screen.queryByText("Olá")).toBeNull();
     fireEvent.press(screen.getByText("↻ Virar carta"));
     expect(screen.getByText("1m")).toBeTruthy();

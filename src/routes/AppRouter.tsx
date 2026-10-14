@@ -75,8 +75,11 @@ function navigateFromAppRoute(navigation: Navigation, route: AppRoute): void {
 function HomeRoute({
   navigation,
 }: NativeStackScreenProps<RootStackParamList, "home">) {
+  const reloadKey = useReloadOnFocus();
+
   return (
     <HomeScreen
+      reloadKey={reloadKey}
       onNavigate={(route) => navigateFromAppRoute(navigation, route)}
     />
   );
