@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Deckly">
+  <rect width="64" height="64" rx="14" fill="#6D4AFF" />
+  <rect x="14" y="20" width="30" height="26" rx="5" fill="#EEE9FF" opacity="0.55" transform="rotate(-8 29 33)" />
+  <rect x="20" y="17" width="30" height="26" rx="5" fill="#FFFDF9" />
+  <circle cx="44" cy="22" r="4" fill="#F3B562" />
+</svg>
