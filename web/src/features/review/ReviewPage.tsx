@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useServices } from "../../app/ServicesProvider";
 import { notify } from "../../components/notifications";
@@ -10,7 +10,6 @@ import type { ReviewRating, SchedulerAlgorithm } from "./domain";
 import { DEFAULT_RETENTION } from "./retention";
 import { createScheduler } from "./schedulerFactory";
 import { advanceQueue, RATING_BUTTONS, toReviewState } from "./session";
-import { formatCompactReviewInterval } from "./time";
 
 interface Session {
   cards: Flashcard[];
@@ -28,7 +27,6 @@ export function ReviewPage() {
   const [sessionNow] = useState(() => services.now());
   const [session, setSession] = useState<Session | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
-  const [shownAt, setShownAt] = useState(sessionNow);
   const [flipped, setFlipped] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -81,23 +79,6 @@ export function ReviewPage() {
 
   const currentCard = session?.cards[0];
 
-  const previews = useMemo(() => {
-    if (!session || !currentCard || !flipped) return null;
-    const scheduler = createScheduler(session.algorithm, {
-      retention: session.retention,
-    });
-    return RATING_BUTTONS.map((button) => {
-      const { nextState } = scheduler.schedule(
-        toReviewState(currentCard),
-        button.rating,
-        shownAt,
-      );
-      return formatCompactReviewInterval(
-        nextState.intervalMinutes ?? nextState.intervalDays * 1440,
-      );
-    });
-  }, [session, currentCard, flipped, shownAt]);
-
   async function handleRate(rating: ReviewRating) {
     if (!session || !currentCard || saving) return;
 
@@ -119,7 +100,6 @@ export function ReviewPage() {
         ...session,
         cards: advanceQueue(session.cards, result.nextState, reviewedAt),
       });
-      setShownAt(services.now());
       setFlipped(false);
       notify.success(t("reviewRegistered"));
     } catch (cause) {
@@ -223,18 +203,15 @@ export function ReviewPage() {
             </Button>
             {flipped ? (
               <div className="mt-6 grid grid-cols-4 gap-2">
-                {RATING_BUTTONS.map((button, index) => (
+                {RATING_BUTTONS.map((button) => (
                   <button
-                    className={`${button.color} flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 font-extrabold text-white transition active:scale-[0.98] disabled:opacity-50`}
+                    className={`${button.color} flex min-h-14 items-center justify-center rounded-xl px-1 py-2 font-extrabold text-white transition active:scale-[0.98] disabled:opacity-50`}
                     disabled={saving}
                     key={button.key}
                     onClick={() => void handleRate(button.rating)}
                     type="button"
                   >
                     <span className="text-sm">{t(button.key)}</span>
-                    <span className="text-xs font-semibold">
-                      {previews?.[index]}
-                    </span>
                   </button>
                 ))}
               </div>

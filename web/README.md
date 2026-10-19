@@ -11,7 +11,7 @@ Browser version of Deckly, a spaced-repetition flashcard app. It is **local-firs
 - Grupos, baralhos e cartões: criar, editar, excluir (com confirmação) e reordenar grupos e baralhos arrastando (ou pelo teclado).
 - Mover cartões entre baralhos preservando agendamento e histórico; mover baralhos entre grupos pelo formulário.
 - Áudio na pergunta do cartão, tocado durante a revisão.
-- Sessão de revisão com **virar carta**, barra de progresso, tempo estimado, prévia do próximo intervalo em cada botão e atalhos `1`–`4` para avaliar.
+- Sessão de revisão com **virar carta**, barra de progresso, tempo estimado e atalhos `1`–`4` para avaliar.
 - Revisar tudo, um baralho ou um grupo.
 - Agendamento **SM-2** ou **FSRS** (v6), com retenção desejada ajustável (70%–97%) e opção de reiniciar o agendamento sem perder o histórico.
 - Progresso: cartões, vencidos, média das avaliações, revisões de hoje e distribuição das notas.

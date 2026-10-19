@@ -30,13 +30,11 @@ describe("tela de revisão", () => {
     await user.click(screen.getByRole("button", flip));
     expect(screen.getByText("Resposta 1")).toBeInTheDocument();
 
-    // Os botões mostram quando o cartão volta: 1m, 1d, 1d, 1d no SM-2.
+    // Os botões mostram só o nome da avaliação, sem o próximo intervalo.
     expect(
-      screen.getByRole("button", { name: /^De novo 1m$/ }),
+      screen.getByRole("button", { name: /^De novo$/ }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /^Bom 1d$/ }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Bom$/ })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /^Bom/ }));
 
@@ -146,13 +144,10 @@ describe("tela de revisão", () => {
     const { user } = renderApp({ route: "/review", services });
 
     await user.click(await screen.findByRole("button", flip));
-    // Cartão novo: "De novo" volta em 1 minuto e "Bom" em 10 minutos (passos de aprendizado).
     expect(
-      screen.getByRole("button", { name: /^De novo 1m$/ }),
+      screen.getByRole("button", { name: /^De novo$/ }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /^Bom 10m$/ }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Bom$/ })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /^Bom/ }));
 
     await screen.findByTestId("review-completion-card");

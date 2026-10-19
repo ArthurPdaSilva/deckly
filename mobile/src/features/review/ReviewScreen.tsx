@@ -24,7 +24,6 @@ import {
 import type { ReviewRating } from "./domain/scheduler";
 import { createReviewRepository } from "./repository";
 import { createScheduler } from "./schedulerFactory";
-import { formatCompactReviewInterval } from "./time";
 
 // Cards whose next review falls within this window return to the same session.
 const REQUEUE_WINDOW_MS = 20 * 60_000;
@@ -42,7 +41,6 @@ export function ReviewScreen({ deck, group, now, onBack }: ReviewScreenProps) {
   const { language, t } = useLanguage();
   const [sessionNow] = useState(() => now ?? new Date());
   const [retention, setRetention] = useState(DEFAULT_RETENTION);
-  const [shownAt, setShownAt] = useState(() => now ?? new Date());
   const [cards, setCards] = useState<Flashcard[]>([]);
   const [totalCards, setTotalCards] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -140,7 +138,6 @@ export function ReviewScreen({ deck, group, now, onBack }: ReviewScreenProps) {
           },
         ];
       });
-      setShownAt(now ?? new Date());
       setIsFlipped(false);
       notify.success(t("reviewRegistered"));
     } catch (cause) {
@@ -269,11 +266,6 @@ export function ReviewScreen({ deck, group, now, onBack }: ReviewScreenProps) {
     ratingContent: {
       alignItems: "center",
       gap: theme.spacing.xs,
-    },
-    ratingInterval: {
-      color: "#FFFFFF",
-      fontSize: 13,
-      fontWeight: "600",
     },
     empty: {
       color: theme.colors.textSecondary,
@@ -453,26 +445,6 @@ export function ReviewScreen({ deck, group, now, onBack }: ReviewScreenProps) {
                             color: theme.colors.ratingEasy,
                           },
                         ].map((option) => {
-                          const preview = createScheduler(algorithm, {
-                            retention,
-                          }).schedule(
-                            {
-                              dueAt: currentCard.dueAt,
-                              intervalDays: currentCard.intervalDays,
-                              easeFactor: currentCard.easeFactor,
-                              repetitions: currentCard.repetitions,
-                              intervalMinutes: currentCard.intervalMinutes,
-                              schedulerAlgorithm:
-                                currentCard.schedulerAlgorithm,
-                              fsrsStability: currentCard.fsrsStability,
-                              fsrsDifficulty: currentCard.fsrsDifficulty,
-                              fsrsState: currentCard.fsrsState,
-                              fsrsLapses: currentCard.fsrsLapses,
-                            },
-                            option.rating,
-                            shownAt,
-                          );
-
                           return (
                             <Pressable
                               key={option.label}
@@ -486,12 +458,6 @@ export function ReviewScreen({ deck, group, now, onBack }: ReviewScreenProps) {
                               <View style={styles.ratingContent}>
                                 <Text style={styles.ratingLabel}>
                                   {option.label}
-                                </Text>
-                                <Text style={styles.ratingInterval}>
-                                  {formatCompactReviewInterval(
-                                    preview.nextState.intervalMinutes ??
-                                      preview.nextState.intervalDays * 1440,
-                                  )}
                                 </Text>
                               </View>
                             </Pressable>
