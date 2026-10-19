@@ -80,6 +80,7 @@ test("baixa um backup, apaga tudo e restaura o progresso", async ({ page }) => {
   await page.goto("/settings");
   await page.getByRole("button", { name: "Apagar tudo" }).click();
   await page.getByRole("button", { name: "Sim, apagar tudo" }).click();
+  await expect(page.getByText("Todos os dados foram apagados.")).toBeVisible();
   await page.goto("/groups");
   await expect(page.getByRole("link", { name: "Para o backup" })).toHaveCount(
     0,
@@ -88,6 +89,7 @@ test("baixa um backup, apaga tudo e restaura o progresso", async ({ page }) => {
   await page.goto("/backup");
   await page.getByTestId("import-input").setInputFiles(backupPath);
   await page.getByRole("button", { name: "Restaurar agora" }).click();
+  await expect(page.getByText("Backup restaurado.")).toBeVisible();
 
   await page.goto("/groups");
   await expect(page.getByRole("link", { name: "Para o backup" })).toBeVisible();
